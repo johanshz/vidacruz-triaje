@@ -1,0 +1,18 @@
+.gradle/
+build/
+**/build/
+.idea/
+*.iml
+
+.gradle-home/
+
+# Herramientas internas de trabajo: nunca van al repositorio
+specs-personal/
+openspec/
+AGENTS.md
+CLAUDE.md
+.claude/
+.codex/
+.agents/
+desarrollo-ia/
+.gradle-home/
