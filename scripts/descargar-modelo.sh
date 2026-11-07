@@ -14,7 +14,7 @@ descargar() {
     if [ "$actual" = "$esperado" ]; then
       return
     fi
-    echo "Checksum SHA-256 invÃ¡lido para archivo existente $nombre: $actual" >&2
+    echo "Checksum SHA-256 inválido para archivo existente $nombre: $actual" >&2
     exit 1
   fi
   curl --fail --location --retry 3 --output "$temporal" "$url"
