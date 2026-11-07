@@ -4,6 +4,7 @@ import co.vidacruz.triage.evento.modelo.entidad.EventoOutbox;
 import co.vidacruz.triage.evento.modelo.entidad.EventoPaciente;
 import co.vidacruz.triage.evento.puerto.repositorio.RepositorioOutbox;
 import co.vidacruz.triage.evento.puerto.repositorio.CandadoPublicacion;
+import co.vidacruz.triage.infraestructura.traza.LectorTraceparent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.r2dbc.postgresql.codec.Json;
@@ -17,28 +18,42 @@ public class AdaptadorR2dbcOutbox implements RepositorioOutbox, CandadoPublicaci
     private static final long CANDADO_PUBLICADOR = 2026110601L;
     private final DatabaseClient db;
     private final ObjectMapper mapper;
-    public AdaptadorR2dbcOutbox(DatabaseClient db, ObjectMapper mapper) { this.db = db; this.mapper = mapper; }
-
-    @Override
-    public Mono<Void> agregar(EventoPaciente evento, String llave) {
-        try {
-            String carga = mapper.writeValueAsString(evento);
-            return db.sql("INSERT INTO outbox (id,tipo,llave,carga) VALUES (:id,:tipo,:llave,CAST(:carga AS jsonb))")
-                    .bind("id", evento.idEvento()).bind("tipo", evento.tipo()).bind("llave", llave)
-                    .bind("carga", carga).fetch().rowsUpdated().then();
-        } catch (JsonProcessingException error) {
-            return Mono.error(error);
-        }
+    private final LectorTraceparent lectorTraceparent;
+    public AdaptadorR2dbcOutbox(DatabaseClient db, ObjectMapper mapper, LectorTraceparent lectorTraceparent) {
+        this.db = db;
+        this.mapper = mapper;
+        this.lectorTraceparent = lectorTraceparent;
     }
 
     @Override
+    public Mono<Void> agregar(EventoPaciente evento, String llave) {
+        // El traceparent se lee del contexto de la petición: así el evento continúa la misma traza en Kafka
+        return Mono.deferContextual(contexto -> {
+            String carga;
+            try {
+                carga = mapper.writeValueAsString(evento);
+            } catch (JsonProcessingException error) {
+                return Mono.error(error);
+            }
+            var insercion = db.sql("INSERT INTO outbox (id,tipo,llave,carga,traceparent) "
+                            + "VALUES (:id,:tipo,:llave,CAST(:carga AS jsonb),:traceparent)")
+                    .bind("id", evento.idEvento()).bind("tipo", evento.tipo()).bind("llave", llave)
+                    .bind("carga", carga);
+            var conTraza = lectorTraceparent.leer(contexto)
+                    .map(traceparent -> insercion.bind("traceparent", traceparent))
+                    .orElseGet(() -> insercion.bindNull("traceparent", String.class));
+            return conTraza.fetch().rowsUpdated().then();
+        });
+    }
+    @Override
     public Mono<List<EventoOutbox>> pendientes(int limite) {
-        return db.sql("SELECT id,secuencia,tipo,llave,carga FROM outbox WHERE enviado_en IS NULL ORDER BY secuencia LIMIT :limite")
+        return db.sql("SELECT id,secuencia,tipo,llave,carga,traceparent FROM outbox WHERE enviado_en IS NULL ORDER BY secuencia LIMIT :limite")
                 .bind("limite", limite).map((fila, metadata) -> {
                     Object carga = fila.get("carga");
                     String json = carga instanceof Json jsonb ? jsonb.asString() : String.valueOf(carga);
                     return new EventoOutbox(fila.get("id", java.util.UUID.class), fila.get("secuencia", Long.class),
-                            fila.get("tipo", String.class), java.util.UUID.fromString(fila.get("llave", String.class)), json);
+                            fila.get("tipo", String.class), java.util.UUID.fromString(fila.get("llave", String.class)), json,
+                            fila.get("traceparent", String.class));
                 }).all().collectList();
     }
 

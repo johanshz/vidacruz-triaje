@@ -54,7 +54,11 @@ class PublicacionKafkaIntegracionTest extends PruebaIntegracionPostgres {
             UUID pacienteEscalado = UUID.randomUUID();
             StepVerifier.create(db.sql("UPDATE outbox SET enviado_en=now() WHERE enviado_en IS NULL")
                     .fetch().rowsUpdated()).expectNextMatches(actualizadas -> actualizadas >= 0).verifyComplete();
+            String traceparentRegistro = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
             insertarEvento(db, idRegistro, primerPaciente, "paciente_registrado", null, "REGISTRADO");
+            StepVerifier.create(db.sql("UPDATE outbox SET traceparent=:traza WHERE id=:id")
+                    .bind("traza", traceparentRegistro).bind("id", idRegistro).fetch().rowsUpdated())
+                    .expectNext(1L).verifyComplete();
             insertarEvento(db, idConsulta, primerPaciente, "paciente_en_consulta", "REGISTRADO", "EN_CONSULTA");
             insertarEvento(db, idAlta, segundoPaciente, "paciente_registrado", null, "REGISTRADO");
             insertarPacienteVencido(db, pacienteEscalado);
@@ -80,6 +84,7 @@ class PublicacionKafkaIntegracionTest extends PruebaIntegracionPostgres {
                 var vence = System.nanoTime() + Duration.ofSeconds(20).toNanos();
                 var idsRecibidos = new java.util.ArrayList<String>();
                 var sobres = new java.util.HashMap<String, com.fasterxml.jackson.databind.JsonNode>();
+                var trazas = new java.util.HashMap<String, String>();
                 while (System.nanoTime() < vence) {
                     for (var mensaje : consumidor.poll(Duration.ofMillis(250)).records("triaje.eventos")) {
                         var sobre = new com.fasterxml.jackson.databind.ObjectMapper().readTree(mensaje.value());
@@ -89,12 +94,17 @@ class PublicacionKafkaIntegracionTest extends PruebaIntegracionPostgres {
                             assertThat(mensaje.key()).isEqualTo(sobre.path("datos").path("idPaciente").asText());
                             idsRecibidos.add(idEvento);
                             sobres.put(idEvento, sobre);
+                            var cabecera = mensaje.headers().lastHeader("traceparent");
+                            trazas.put(idEvento, cabecera == null ? null
+                                    : new String(cabecera.value(), java.nio.charset.StandardCharsets.UTF_8));
                         }
                     }
                 }
                 assertThat(idsRecibidos).containsExactlyInAnyOrder(idRegistro.toString(), idConsulta.toString(),
                         idAlta.toString(), idEscalamiento.toString());
                 assertThat(idsRecibidos.indexOf(idRegistro.toString())).isLessThan(idsRecibidos.indexOf(idConsulta.toString()));
+                assertThat(trazas.get(idRegistro.toString())).isEqualTo(traceparentRegistro);
+                assertThat(trazas.get(idConsulta.toString())).isNull();
                 assertThat(sobres.get(idRegistro.toString()).path("tipo").asText()).isEqualTo("paciente_registrado");
                 assertThat(sobres.get(idConsulta.toString()).path("tipo").asText()).isEqualTo("paciente_en_consulta");
                 assertThat(sobres.get(idAlta.toString()).path("tipo").asText()).isEqualTo("paciente_registrado");

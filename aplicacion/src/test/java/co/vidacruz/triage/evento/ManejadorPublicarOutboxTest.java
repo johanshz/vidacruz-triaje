@@ -36,7 +36,7 @@ class ManejadorPublicarOutboxTest {
         PublicadorEventos kafka = evento -> {
             enviados.add(evento);
             return evento.equals(fallido) && debeFallar.get()
-                    ? Mono.error(new IllegalStateException("Kafka caÃ­do")) : Mono.empty();
+                    ? Mono.error(new IllegalStateException("Kafka caído")) : Mono.empty();
         };
         AtomicInteger pendientes = new AtomicInteger();
         ContadorEventosPendientes contador = cantidad -> pendientes.set((int) cantidad);
@@ -102,6 +102,6 @@ class ManejadorPublicarOutboxTest {
     }
 
     private EventoOutbox evento(long secuencia) {
-        return new EventoOutbox(UUID.randomUUID(), secuencia, "paciente_registrado", UUID.randomUUID(), "{}");
+        return new EventoOutbox(UUID.randomUUID(), secuencia, "paciente_registrado", UUID.randomUUID(), "{}", null);
     }
 }

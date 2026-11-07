@@ -17,7 +17,7 @@ class CaminoPacienteIntegracionTest extends SoporteIntegracionTriage {
     @Test void registraConsultaYTransicionaConPersistenciaAuditoriaYOutbox() {
         byte[] cuerpo = webTestClient.post().uri("/triage/pacientes")
                 .header("X-API-Key", "clave-prueba").contentType(MediaType.APPLICATION_JSON)
-                .bodyValue("{\"nombreCompleto\":\"Paciente IntegraciÃ³n\",\"edad\":40,\"frecuenciaCardiaca\":70,\"presionSistolica\":120,\"presionDiastolica\":80,\"spo2\":98,\"temperatura\":36.5,\"dolor\":2,\"gcs\":15,\"quejaPrincipal\":\"Dolor\"}")
+                .bodyValue("{\"nombreCompleto\":\"Paciente Integración\",\"edad\":40,\"frecuenciaCardiaca\":70,\"presionSistolica\":120,\"presionDiastolica\":80,\"spo2\":98,\"temperatura\":36.5,\"dolor\":2,\"gcs\":15,\"quejaPrincipal\":\"Dolor\"}")
                 .exchange().expectStatus().isCreated().expectBody()
                 .jsonPath("$.nivel").isEqualTo("NO_URGENTE").jsonPath("$.estado").isEqualTo("REGISTRADO")
                 .returnResult().getResponseBody();
@@ -42,6 +42,25 @@ class CaminoPacienteIntegracionTest extends SoporteIntegracionTriage {
                 .map((row, metadata) -> row.get("total", Long.class)).one()).expectNext(2L).verifyComplete();
         StepVerifier.create(databaseClient.sql("SELECT COUNT(*) AS total FROM outbox WHERE llave=:id").bind("id", id.toString())
                 .map((row, metadata) -> row.get("total", Long.class)).one()).expectNext(2L).verifyComplete();
+    }
+
+    @Test void registroGuardaEnElOutboxElTraceparentDeLaPeticion() {
+        var resultado = webTestClient.post().uri("/triage/pacientes")
+                .header("X-API-Key", "clave-prueba").contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"nombreCompleto\":\"Paciente Traza\",\"edad\":40,\"frecuenciaCardiaca\":70,"
+                        + "\"presionSistolica\":120,\"presionDiastolica\":80,\"spo2\":98,\"temperatura\":36.5,"
+                        + "\"dolor\":2,\"gcs\":15,\"quejaPrincipal\":\"Dolor\"}")
+                .exchange().expectStatus().isCreated().expectBody(String.class).returnResult();
+        String traceId = resultado.getResponseHeaders().getFirst("X-Trace-Id");
+        String idTexto = resultado.getResponseBody().replaceAll(".*\\\"id\\\":\\\"([^\\\"]+).*", "$1");
+        StepVerifier.create(databaseClient.sql("SELECT traceparent FROM outbox WHERE llave=:id AND tipo='paciente_registrado'")
+                .bind("id", idTexto).map((row, metadata) -> row.get("traceparent", String.class)).one())
+                .assertNext(traceparent -> {
+                    org.assertj.core.api.Assertions.assertThat(traceId).isNotBlank();
+                    org.assertj.core.api.Assertions.assertThat(traceparent)
+                            .matches("00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]")
+                            .contains("-" + traceId + "-");
+                }).verifyComplete();
     }
 
     @Test void solicitudInvalidaResponde400ConCampoYCodigo() {

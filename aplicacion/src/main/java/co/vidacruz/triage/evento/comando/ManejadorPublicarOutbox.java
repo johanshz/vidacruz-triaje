@@ -35,7 +35,7 @@ public class ManejadorPublicarOutbox {
             return outbox.pendientes(lote).flatMapMany(Flux::fromIterable)
                     .concatMap(this::publicarYMarcar).then()
                     .onErrorResume(FalloKafkaPublicacion.class, error -> {
-                        LOG.log(Level.WARNING, "FallÃ³ Kafka al publicar idEvento=" + error.idEvento, error);
+                        LOG.log(Level.WARNING, "Falló Kafka al publicar idEvento=" + error.idEvento, error);
                         return Mono.empty();
                     });
         }).then(outbox.contarPendientes()).doOnNext(contador::actualizar).then())
