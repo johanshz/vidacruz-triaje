@@ -69,3 +69,67 @@ Todas las respuestas incluyen `X-Trace-Id`. Los errores usan ProblemDetail: 401 
 
 - **S-10:** tipos desconocidos o versiones distintas de 1 se ignoran y generan log WARN; eventos mal formados se publican en `triaje.eventos.DLT` sin reintentos.
 - **S-11:** readiness no depende de Redis ni Kafka; si Redis está caído, el GET responde 503 `URGENCIAS_NO_DISPONIBLE`.
+
+## Asistente — consulta de protocolos
+
+### Variables
+
+| Variable | Requerida | Uso |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | No al arrancar | Clave de Anthropic; sin ella la consulta de IA responde 503 `IA_NO_DISPONIBLE` |
+| `ASISTENTE_MODELO` | No, `claude-sonnet-5-5` | Modelo de chat |
+| `ASISTENTE_UMBRAL_SIMILITUD` | No, `0.75` inicial | Umbral de recuperación; requiere calibración para fijar su valor final |
+| `ASISTENTE_TOP_K` | No, `3` | Máximo de fragmentos recuperados |
+| `ASISTENTE_IA_TIMEOUT` | No, `10s` | Límite de la llamada al chat |
+| `ASISTENTE_IA_VENTANA` | No, `10` | Tamaño de ventana del circuit breaker |
+| `ASISTENTE_IA_MINIMO_LLAMADAS` | No, `5` | Mínimo de llamadas antes de evaluar fallos |
+| `ASISTENTE_IA_PORCENTAJE_FALLOS` | No, `50` | Porcentaje de fallos para abrir el circuito |
+| `ASISTENTE_IA_ESPERA_ABIERTO` | No, `30s` | Espera antes de probar recuperación |
+| `ASISTENTE_IA_LLAMADAS_SEMIABIERTO` | No, `2` | Llamadas de prueba en semia­bierto |
+
+### Modelo local de embeddings
+
+El índice usa ONNX local. Obtén `model.onnx` y `tokenizer.json` con checksum verificado mediante
+`scripts/descargar-modelo.ps1` (PowerShell) o `scripts/descargar-modelo.sh` (Linux/Docker). En Docker
+la imagen descarga los archivos durante la etapa de build si no existen. El cargador indexa los tres
+protocolos (siete secciones) al arrancar y detiene el inicio si el corpus o el modelo no cargan.
+
+### Consultas de ejemplo
+
+Ejecuta cada consulta contra `http://localhost:8082/asistente/consulta` con `X-API-Key`:
+
+```sh
+curl -X POST http://localhost:8082/asistente/consulta \
+  -H "X-API-Key: TU_CLAVE" -H 'Content-Type: application/json' \
+  -d '{"pregunta":"¿Cómo se maneja una crisis hipertensiva?"}'
+
+curl -X POST http://localhost:8082/asistente/consulta \
+  -H "X-API-Key: TU_CLAVE" -H 'Content-Type: application/json' \
+  -d '{"pregunta":"¿Cuál es el primer antibiótico en sepsis?"}'
+
+curl -X POST http://localhost:8082/asistente/consulta \
+  -H "X-API-Key: TU_CLAVE" -H 'Content-Type: application/json' \
+  -d '{"pregunta":"¿Cuál es la primera línea en diabetes tipo 2?"}'
+```
+
+La primera consulta debe recuperar `PROTO-001`, la segunda `PROTO-002`; la tercera debe indicar que
+no existe protocolo. Sin coincidencia sobre el umbral o si fallan las barreras de fuentes/cifras, se
+devuelve la frase fija de no cobertura con `fuentes: []` y sin llamar al LLM cuando no hay contexto.
+Las cinco barreras validan la entrada, la cobertura del índice, las fuentes, las citas respecto de
+los fragmentos recuperados y las cifras de la respuesta. Una caída o circuito abierto del proveedor
+devuelve 503 `IA_NO_DISPONIBLE`.
+
+La pregunta debe contener de 3 a 500 caracteres tras recortarla (S-15). No cobertura o rechazo de
+una barrera devuelve 200 con el aviso fijo (S-16); las cifras se validan contra fragmentos, no contra
+la pregunta (S-17). La clave de Anthropic no es necesaria durante el arranque (S-18). El error 503
+usa `codigo: IA_NO_DISPONIBLE` (S-19). El umbral `0.75` es provisional (S-08), pendiente de
+calibración con las tres consultas y el modelo ONNX real. **PE pendiente de Johan:** ejecutar también la prueba de integración CA-22 con BlockHound cuando estén disponibles `model.onnx` y `tokenizer.json`; hasta entonces esa prueba se omite explícitamente y el índice no se declara calibrado.
+
+### Pendientes de ejecución con credenciales/modelo reales
+
+- **PE-01 — Johan:** ejecutar la comparación Sonnet 5.5/Haiku 5.5 con las tres consultas y registrar
+  respuesta, fuentes, resultado de las cinco barreras, latencia, costo estimado y decisión en
+  `desarrollo-ia/asistente/comparacion-modelos.md`. Sonnet permanece como modelo por defecto hasta
+  completar la comparación.
+- **PE-02 — Johan:** calibrar el umbral con el modelo ONNX real y las consultas de `PROTO-001`,
+  `PROTO-002` y sin protocolo; registrar el resultado antes de fijar el umbral final.

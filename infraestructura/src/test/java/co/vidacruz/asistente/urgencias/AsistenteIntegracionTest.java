@@ -131,6 +131,11 @@ class AsistenteIntegracionTest {
         String traceId401 = sinClave.getResponseHeaders().getFirst("X-Trace-Id");
         org.junit.jupiter.api.Assertions.assertTrue(new String(sinClave.getResponseBody(), StandardCharsets.UTF_8)
                 .contains("\"traceId\":\"" + traceId401 + "\""));
+        cliente.post().uri("http://localhost:" + puerto + "/asistente/consulta")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"pregunta\":\"consulta de protocolo\"}")
+                .exchange().expectStatus().isUnauthorized()
+                .expectBody().jsonPath("$.codigo").isEqualTo("NO_AUTORIZADO");
         cliente.get().uri("http://localhost:" + puerto + "/actuator/health/liveness")
                 .exchange().expectStatus().isOk().expectBody().jsonPath("$.status").isEqualTo("UP");
         cliente.get().uri("http://localhost:" + puerto + "/actuator/health/readiness")

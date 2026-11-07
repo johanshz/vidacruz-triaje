@@ -1,8 +1,24 @@
-server:
+﻿server:
   port: ${SERVER_PORT:8080}
 spring:
   application:
     name: asistente
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      chat:
+        options:
+          model: ${vidacruz.ia.modelo:claude-sonnet-5-5}
+    model:
+      embedding: transformers
+    embedding:
+      transformer:
+        onnx:
+          model-uri: classpath:/model/model.onnx
+        tokenizer:
+          uri: classpath:/model/tokenizer.json
+          options:
+            padding: true
   data:
     redis:
       host: ${REDIS_HOST}
@@ -60,6 +76,19 @@ vidacruz:
       intervalo-inicial: ${KAFKA_RETRY_INITIAL_MS:1000}
       intervalo-maximo: ${KAFKA_RETRY_MAX_MS:4000}
       multiplicador: ${KAFKA_RETRY_MULTIPLIER:2.0}
+  ia:
+    corpus:
+      cargar: ${ASISTENTE_CORPUS_CARGAR:true}
+    modelo: ${ASISTENTE_MODELO:claude-sonnet-5-5}
+    umbral-similitud: ${ASISTENTE_UMBRAL_SIMILITUD:0.75}
+    top-k: ${ASISTENTE_TOP_K:3}
+    resiliencia:
+      timeout: ${ASISTENTE_IA_TIMEOUT:10s}
+      ventana: ${ASISTENTE_IA_VENTANA:10}
+      minimo-llamadas: ${ASISTENTE_IA_MINIMO_LLAMADAS:5}
+      porcentaje-fallos: ${ASISTENTE_IA_PORCENTAJE_FALLOS:50}
+      espera-abierto: ${ASISTENTE_IA_ESPERA_ABIERTO:30s}
+      llamadas-semiabierto: ${ASISTENTE_IA_LLAMADAS_SEMIABIERTO:2}
 logging:
   structured:
     format:

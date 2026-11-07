@@ -1,0 +1,9 @@
+{
+  "codigo": "PROTO-001",
+  "titulo": "Crisis hipertensiva, manejo inicial",
+  "secciones": [
+    {"nombre": "Definición", "texto": "presión ≥ 180/120 mmHg. Con daño de órgano diana es emergencia; sin él, urgencia."},
+    {"nombre": "Medidas iniciales", "texto": "reconfirmar la presión tras 5 min de reposo; no bajarla más de 25 % en la primera hora; vigilar signos de encefalopatía."},
+    {"nombre": "Contraindicaciones", "texto": "nifedipino sublingual; reducción intravenosa rápida sin monitoreo en cuidados intensivos."}
+  ]
+}

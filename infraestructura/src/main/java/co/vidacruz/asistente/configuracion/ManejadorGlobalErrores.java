@@ -4,6 +4,7 @@ import co.vidacruz.asistente.comun.excepcion.ExcepcionNegocio;
 import co.vidacruz.asistente.comun.excepcion.ExcepcionRecursoNoEncontrado;
 import co.vidacruz.asistente.comun.excepcion.ExcepcionValidacion;
 import co.vidacruz.asistente.urgencias.excepcion.ExcepcionUrgenciasNoDisponible;
+import co.vidacruz.asistente.protocolo.excepcion.ExcepcionIaNoDisponible;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -38,9 +39,19 @@ public class ManejadorGlobalErrores {
                 .body(crear(HttpStatus.SERVICE_UNAVAILABLE, excepcion.getMessage(), excepcion.codigo(), intercambio, true));
     }
 
+    @ExceptionHandler(ExcepcionIaNoDisponible.class)
+    ResponseEntity<ProblemDetail> iaNoDisponible(ExcepcionIaNoDisponible excepcion, ServerWebExchange intercambio) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(crear(HttpStatus.SERVICE_UNAVAILABLE, excepcion.getMessage(), excepcion.codigo(), intercambio, true));
+    }
+
     @ExceptionHandler(ServerWebInputException.class)
     ResponseEntity<ProblemDetail> entradaInvalida(ServerWebInputException excepcion, ServerWebExchange intercambio) {
-        return ResponseEntity.badRequest().body(crear(HttpStatus.BAD_REQUEST, "La solicitud no es válida", "VALIDACION", intercambio, true));
+        ProblemDetail problema = crear(HttpStatus.BAD_REQUEST, "La solicitud no es válida", "VALIDACION", intercambio, true);
+        if ("/asistente/consulta".equals(intercambio.getRequest().getPath().value())) {
+            problema.setProperty("campo", "pregunta");
+        }
+        return ResponseEntity.badRequest().body(problema);
     }
 
     @ExceptionHandler(ResponseStatusException.class)

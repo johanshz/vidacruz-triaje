@@ -16,7 +16,10 @@ subprojects {
     apply plugin: 'jacoco'
     apply plugin: 'io.spring.dependency-management'
     dependencyManagement {
-        imports { mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES }
+        imports {
+            mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
+            mavenBom 'org.springframework.ai:spring-ai-bom:1.1.0'
+        }
     }
     java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
     dependencies {

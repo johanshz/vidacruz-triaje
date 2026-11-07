@@ -8,10 +8,17 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
     implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
+    implementation 'org.springframework.ai:spring-ai-starter-model-transformers'
+    implementation 'org.springframework.ai:spring-ai-vector-store'
+    implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.3.0'
+    implementation 'io.github.resilience4j:resilience4j-timelimiter:2.3.0'
+    implementation 'io.github.resilience4j:resilience4j-reactor:2.3.0'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'io.micrometer:micrometer-tracing-bridge-otel'
     implementation 'io.micrometer:micrometer-registry-prometheus'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
     testImplementation 'io.projectreactor:reactor-test'
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.5.1'
     testImplementation 'org.springframework.kafka:spring-kafka-test'
@@ -30,6 +37,10 @@ dependencies {
 
 tasks.named('testCodeCoverageReport') {
     dependsOn rootProject.subprojects.collect { proyecto -> proyecto.tasks.named('compileJava') }
+    dependsOn rootProject.subprojects.collect { proyecto -> proyecto.tasks.named('test') }
+    onlyIf('Las pruebas fueron omitidas explícitamente') {
+        !gradle.startParameter.excludedTaskNames.any { nombre -> nombre == 'test' || nombre.endsWith(':test') }
+    }
     reports {
         xml.required = true
         xml.outputLocation = layout.buildDirectory.file('reports/jacoco/test/jacocoTestReport.xml')
@@ -42,14 +53,18 @@ tasks.named('testCodeCoverageReport') {
 
 tasks.register('verificarCoberturaAgregada') {
     dependsOn tasks.named('testCodeCoverageReport')
+    onlyIf('Las pruebas fueron omitidas explícitamente') {
+        !gradle.startParameter.excludedTaskNames.any { nombre -> nombre == 'test' || nombre.endsWith(':test') }
+    }
     doLast {
         def reporte = layout.buildDirectory.file('reports/jacoco/test/jacocoTestReport.xml').get().asFile
         if (!reporte.exists()) throw new GradleException('No se generó el reporte agregado de JaCoCo')
         def fabricaDocumentos = javax.xml.parsers.DocumentBuilderFactory.newInstance()
         fabricaDocumentos.setFeature('http://apache.org/xml/features/nonvalidating/load-external-dtd', false)
         def documento = fabricaDocumentos.newDocumentBuilder().parse(reporte)
+        def raiz = documento.documentElement
         def linea = documento.getElementsByTagName('counter').find {
-            it.getAttribute('type') == 'LINE'
+            it.parentNode.isSameNode(raiz) && it.getAttribute('type') == 'LINE'
         }
         if (linea == null) throw new GradleException('El reporte agregado no contiene el contador de líneas')
         def cubiertas = linea.getAttribute('covered').toBigInteger()

@@ -5,4 +5,7 @@ build/
 *.iml
 
 .gradle-home/
+gradle-home/
+**/model.onnx
+**/tokenizer.json
 .env

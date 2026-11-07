@@ -26,19 +26,21 @@ class ArquitecturaTest {
         assertFalse(aplicacion.isEmpty());
         assertTrue(infraestructura.stream().anyMatch(clase -> clase.getName().endsWith("Aplicacion")));
 
-        ArchRule dominioAislado = noClasses().should().dependOnClassesThat()
-                .resideInAnyPackage("..adaptador..", "..configuracion..", "..controlador..", "org.springframework..");
-        ArchRule aplicacionAislada = noClasses().should().dependOnClassesThat()
+        ArchRule capasInternasAisladas = noClasses().should().dependOnClassesThat()
                 .resideInAnyPackage("..adaptador..", "..configuracion..", "..controlador..", "org.springframework..");
         ArchRule controladoresAislados = noClasses().that().resideInAPackage("..controlador..")
                 .should().dependOnClassesThat().resideInAPackage("..adaptador..");
         ArchRule consultasSinModeloEscritura = noClasses().that().resideInAPackage("..consulta..")
                 .should().dependOnClassesThat().resideInAnyPackage("..servicio..", "..modelo.entidad..");
+        ArchRule capasInternasSinDependenciasDeIa = noClasses().should().dependOnClassesThat()
+                .resideInAnyPackage("org.springframework.ai..", "io.github.resilience4j..");
 
-        dominioAislado.check(dominio);
-        aplicacionAislada.check(aplicacion);
+        capasInternasAisladas.check(dominio);
+        capasInternasAisladas.check(aplicacion);
         controladoresAislados.check(infraestructura);
         consultasSinModeloEscritura.check(aplicacion);
+        capasInternasSinDependenciasDeIa.check(dominio);
+        capasInternasSinDependenciasDeIa.check(aplicacion);
         verificarDependenciasEntreModulos(dominio, aplicacion, infraestructura);
     }
 
