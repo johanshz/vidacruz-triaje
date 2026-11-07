@@ -1,4 +1,7 @@
-plugins { id 'org.springframework.boot' }
+plugins {
+    id 'org.springframework.boot'
+    id 'jacoco-report-aggregation'
+}
 dependencies {
     implementation project(':dominio')
     implementation project(':aplicacion')
@@ -6,9 +9,64 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    implementation 'io.micrometer:micrometer-tracing-bridge-otel'
     implementation 'io.micrometer:micrometer-registry-prometheus'
     runtimeOnly 'org.postgresql:r2dbc-postgresql'
+    runtimeOnly 'org.springframework:spring-jdbc'
+    runtimeOnly 'org.postgresql:postgresql'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'io.projectreactor:reactor-test'
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.5.1'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'io.projectreactor.tools:blockhound:1.0.18.RELEASE'
+    jacocoAggregation project(':dominio')
+    jacocoAggregation project(':aplicacion')
+    jacocoAggregation project(':infraestructura')
+}
+
+def clasesExcluidasDeCobertura = ['**/Aplicacion.class', '**/package-info.class']
+
+tasks.named('testCodeCoverageReport') {
+    dependsOn rootProject.subprojects.collect { it.tasks.named('test') }
+    dependsOn rootProject.subprojects.collect { it.tasks.named('compileJava') }
+    reports {
+        xml.required = true
+        xml.outputLocation = rootProject.layout.buildDirectory.file('reports/jacoco/test/jacocoTestReport.xml')
+        html.required = true
+    }
+    classDirectories.setFrom(classDirectories.files.collect { archivo ->
+        project.fileTree(archivo) { exclude clasesExcluidasDeCobertura }
+    })
+}
+
+tasks.register('verificarCoberturaAgregada', JacocoCoverageVerification) {
+    dependsOn rootProject.subprojects.collect { it.tasks.named('test') }
+    dependsOn rootProject.subprojects.collect { it.tasks.named('compileJava') }
+    executionData.from(rootProject.subprojects.collect {
+        it.tasks.named('test').get().extensions.getByType(JacocoTaskExtension).destinationFile
+    })
+    classDirectories.from(rootProject.subprojects.collect { it.sourceSets.main.output.classesDirs }.flatten())
+    sourceDirectories.from(rootProject.subprojects.collect { it.sourceSets.main.allSource.srcDirs }.flatten())
+    classDirectories.setFrom(classDirectories.files.collect { archivo ->
+        project.fileTree(archivo) { exclude clasesExcluidasDeCobertura }
+    })
+    violationRules {
+        rule {
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.80
+            }
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('testCodeCoverageReport')
+    dependsOn tasks.named('verificarCoberturaAgregada')
 }

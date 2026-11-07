@@ -1,22 +1,53 @@
 server:
-  port: ${SERVER_PORT}
+  port: ${SERVER_PORT:8080}
 spring:
   application:
     name: triage
   r2dbc:
-    url: ${DB_URL}
+    url: r2dbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
+  flyway:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
+    user: ${DB_USER}
+    password: ${DB_PASSWORD}
+    locations: classpath:db/migration
+  reactor:
+    context-propagation: auto
+  jackson:
+    deserialization:
+      accept-float-as-int: false
 management:
+  tracing:
+    sampling:
+      probability: 1.0
   endpoints:
     web:
       exposure:
-        include: health,prometheus
+        include: health,info,prometheus
   endpoint:
     health:
+      show-details: never
       probes:
         enabled: true
       liveness:
         enabled: true
       readiness:
         enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,r2dbc
+  health:
+    defaults:
+      enabled: true
+    r2dbc:
+      enabled: true
+logging:
+  structured:
+    format:
+      console: ecs
+vidacruz:
+  seguridad:
+    api-key: ${TRIAGE_API_KEY}

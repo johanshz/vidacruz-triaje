@@ -1,19 +1,29 @@
 package co.vidacruz.triage;
-import com.tngtech.archunit.core.importer.ImportOption;
-import com.tngtech.archunit.junit.AnalyzeClasses;
-import com.tngtech.archunit.junit.ArchTest;
-import com.tngtech.archunit.lang.ArchRule;
+
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
-@AnalyzeClasses(packages = "co.vidacruz.triage", importOptions = ImportOption.DoNotIncludeTests.class)
+
+import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.importer.ClassFileImporter;
+import java.nio.file.Path;
+import java.nio.file.Files;
+import org.junit.jupiter.api.Test;
+
 class ArquitecturaTest {
-    @ArchTest static final ArchRule dominio_no_depende_de_otras_capas = noClasses().that().resideInAPackage("..dominio..")
-      .should().dependOnClassesThat().resideInAnyPackage("..aplicacion..", "..infraestructura..").allowEmptyShould(true);
-    @ArchTest static final ArchRule aplicacion_no_depende_de_infraestructura = noClasses().that().resideInAPackage("..aplicacion..")
-      .should().dependOnClassesThat().resideInAPackage("..infraestructura..").allowEmptyShould(true);
-    @ArchTest static final ArchRule capas_internas_no_dependen_de_spring = noClasses().that().resideInAnyPackage("..dominio..", "..aplicacion..")
-      .should().dependOnClassesThat().resideInAPackage("org.springframework..").allowEmptyShould(true);
-    @ArchTest static final ArchRule controladores_no_depende_de_adaptadores = noClasses().that().resideInAPackage("..controlador..")
-      .should().dependOnClassesThat().resideInAPackage("..adaptador..").allowEmptyShould(true);
-    @ArchTest static final ArchRule consultas_no_usan_modelo_de_escritura = noClasses().that().resideInAPackage("..consulta..")
-      .should().dependOnClassesThat().resideInAnyPackage("..servicio..", "..modelo.entidad..").allowEmptyShould(true);
+    private static final JavaClasses DOMINIO = importar("dominio");
+    private static final JavaClasses APLICACION = importar("aplicacion");
+    private static final JavaClasses INFRAESTRUCTURA = importar("infraestructura");
+
+    @Test void dominioNoDependeDeAplicacionNiInfraestructura() { noClasses().should().dependOnClassesThat().resideInAnyPackage("co.vidacruz.triage.aplicacion..", "co.vidacruz.triage.infraestructura..").check(DOMINIO); }
+    @Test void dominioNoDependeDeSpring() { noClasses().should().dependOnClassesThat().resideInAnyPackage("org.springframework..").check(DOMINIO); }
+    @Test void aplicacionNoDependeDeInfraestructura() { noClasses().should().dependOnClassesThat().resideInAnyPackage("co.vidacruz.triage.infraestructura..").check(APLICACION); }
+    @Test void aplicacionNoDependeDeSpring() { noClasses().should().dependOnClassesThat().resideInAnyPackage("org.springframework..").check(APLICACION); }
+    @Test void controladoresNoDependenDeAdaptadores() { noClasses().that().resideInAPackage("..controlador..").should().dependOnClassesThat().resideInAPackage("..adaptador..").allowEmptyShould(true).check(INFRAESTRUCTURA); }
+    @Test void consultasNoDependenDeServiciosNiEntidades() { noClasses().that().resideInAPackage("..consulta..").should().dependOnClassesThat().resideInAnyPackage("..servicio..", "..modelo.entidad..").allowEmptyShould(true).check(APLICACION); }
+
+    private static JavaClasses importar(String modulo) {
+        Path directorio = Path.of(System.getProperty("user.dir")).toAbsolutePath();
+        while (directorio != null && !Files.exists(directorio.resolve("settings.gradle"))) directorio = directorio.getParent();
+        if (directorio == null) throw new IllegalStateException("No se encontró la raíz Gradle");
+        return new ClassFileImporter().importPath(directorio.resolve(Path.of(modulo, "build", "classes", "java", "main")));
+    }
 }
