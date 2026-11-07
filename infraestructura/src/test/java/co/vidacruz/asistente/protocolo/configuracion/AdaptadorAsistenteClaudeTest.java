@@ -133,6 +133,34 @@ class AdaptadorAsistenteClaudeTest {
     }
 
     @Test
+    void jsonEnvueltoEnBloqueMarkdownSeAcepta() {
+        var modelo = mock(ChatModel.class);
+        var adaptador = crearAdaptador(modelo, new SimpleMeterRegistry(), Duration.ofSeconds(1), 5);
+        when(modelo.call(any(Prompt.class))).thenReturn(new ChatResponse(List.of(
+                new Generation(new AssistantMessage("```json\n{\"respuesta\":\"reposo 5 minutos\","
+                        + "\"fuentes\":[{\"protocolo\":\"PROTO-001\",\"seccion\":\"Medidas iniciales\"}],"
+                        + "\"sinCobertura\":false}\n```")))));
+
+        StepVerifier.create(adaptador.responder(PREGUNTA, FRAGMENTOS))
+                .assertNext(respuesta -> {
+                    assertFalse(respuesta.sinCobertura());
+                    assertEquals("reposo 5 minutos", respuesta.respuesta());
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void quitaLaTemperaturaPorDefectoDeSpringAiAnthropic() {
+        var propiedades = new org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatProperties();
+        assertFalse(propiedades.getOptions().getTemperature() == null, "Spring AI trae temperature por defecto");
+
+        ConfiguracionAsistenteProtocolos.quitarTemperaturaAnthropic()
+                .postProcessAfterInitialization(propiedades, "anthropicChatProperties");
+
+        assertTrue(propiedades.getOptions().getTemperature() == null, "Claude Sonnet 5.5 rechaza temperature");
+    }
+
+    @Test
     void requestAlModeloNoIncluyeTemperatureNiThinkingDesactivado() throws Exception {
         var modelo = mock(ChatModel.class);
         var adaptador = crearAdaptador(modelo, new SimpleMeterRegistry(), Duration.ofSeconds(1), 5);

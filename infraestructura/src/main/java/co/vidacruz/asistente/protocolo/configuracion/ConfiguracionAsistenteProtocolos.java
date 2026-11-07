@@ -12,6 +12,8 @@ import io.github.resilience4j.timelimiter.TimeLimiterRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.model.anthropic.autoconfigure.AnthropicChatProperties;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -23,6 +25,25 @@ public class ConfiguracionAsistenteProtocolos {
     @Bean
     ChatClient chatClient(ChatClient.Builder builder) {
         return builder.build();
+    }
+
+    /**
+     * Spring AI 1.1 envía {@code temperature=0.8} por defecto y Claude Sonnet 5.5 lo rechaza con
+     * HTTP 400 ("temperature is deprecated for this model"). La propiedad vacía no lo quita: se
+     * borra de las opciones por defecto antes de crear el modelo de chat (verificado en vivo
+     * 2026-11-07).
+     */
+    @Bean
+    static BeanPostProcessor quitarTemperaturaAnthropic() {
+        return new BeanPostProcessor() {
+            @Override
+            public Object postProcessAfterInitialization(Object bean, String nombre) {
+                if (bean instanceof AnthropicChatProperties propiedades) {
+                    propiedades.getOptions().setTemperature(null);
+                }
+                return bean;
+            }
+        };
     }
 
     @Bean

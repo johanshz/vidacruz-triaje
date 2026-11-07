@@ -80,7 +80,7 @@ vidacruz:
     corpus:
       cargar: ${ASISTENTE_CORPUS_CARGAR:true}
     modelo: ${ASISTENTE_MODELO:claude-sonnet-5-5}
-    umbral-similitud: ${ASISTENTE_UMBRAL_SIMILITUD:0.75}
+    umbral-similitud: ${ASISTENTE_UMBRAL_SIMILITUD:0.55}
     top-k: ${ASISTENTE_TOP_K:3}
     resiliencia:
       timeout: ${ASISTENTE_IA_TIMEOUT:10s}

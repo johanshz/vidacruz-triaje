@@ -19,6 +19,7 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -28,7 +29,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.time.Duration;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
@@ -42,7 +43,16 @@ import reactor.blockhound.BlockHound;
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"vidacruz.ia.corpus.cargar=true", "spring.ai.model.chat=anthropic",
-                "spring.ai.model.embedding=transformers"})
+                "spring.ai.model.embedding=transformers",
+                "spring.ai.embedding.transformer.onnx.model-uri=classpath:/model/model.onnx",
+                "spring.ai.embedding.transformer.tokenizer.uri=classpath:/model/tokenizer.json",
+                // El application.yaml de pruebas oculta el principal: se repiten aquí sus valores de IA
+                "vidacruz.ia.modelo=claude-sonnet-5-5", "vidacruz.ia.umbral-similitud=0.55",
+                "vidacruz.ia.top-k=3", "vidacruz.ia.resiliencia.timeout=10s",
+                "vidacruz.ia.resiliencia.timeout-embeddings=10s", "vidacruz.ia.resiliencia.ventana=10",
+                "vidacruz.ia.resiliencia.minimo-llamadas=5", "vidacruz.ia.resiliencia.porcentaje-fallos=50",
+                "vidacruz.ia.resiliencia.espera-abierto=30s",
+                "vidacruz.ia.resiliencia.llamadas-semiabierto=2"})
 @AutoConfigureWebTestClient
 class ConsultaRagBlockHoundIntegracionTest {
     static {
@@ -53,8 +63,7 @@ class ConsultaRagBlockHoundIntegracionTest {
     static final GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7"))
             .withExposedPorts(6379);
     @Container
-    static final KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("apache/kafka:4.1.0")
-            .asCompatibleSubstituteFor("confluentinc/cp-kafka"));
+    static final KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("apache/kafka:4.1.0"));
 
     @MockitoBean
     ChatModel chatModel;
@@ -81,12 +90,14 @@ class ConsultaRagBlockHoundIntegracionTest {
                 new AssistantMessage("{\"respuesta\":\"Reposo por 5 min\",\"fuentes\":[{\"protocolo\":\"PROTO-001\",\"seccion\":\"Medidas iniciales\"}],\"sinCobertura\":false}")))));
 
         cliente.post().uri("http://localhost:" + puerto + "/asistente/consulta")
+                .contentType(MediaType.APPLICATION_JSON)
                 .header("X-API-Key", "clave-integracion-rag")
                 .bodyValue("{\"pregunta\":\"manejo inicial de crisis hipertensiva\"}")
                 .exchange().expectStatus().isOk()
                 .expectBody().jsonPath("$.fuentes[0].protocolo").isEqualTo("PROTO-001");
 
         cliente.post().uri("http://localhost:" + puerto + "/asistente/consulta")
+                .contentType(MediaType.APPLICATION_JSON)
                 .header("X-API-Key", "clave-integracion-rag")
                 .bodyValue("{\"pregunta\":\"primera línea en diabetes tipo 2\"}")
                 .exchange().expectStatus().isOk()
@@ -100,10 +111,12 @@ class ConsultaRagBlockHoundIntegracionTest {
     @Test
     void validaErroresHttpYClaveVaciaPermiteArranque() {
         cliente.post().uri("http://localhost:" + puerto + "/asistente/consulta")
+                .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"pregunta\":\"pregunta válida\"}")
                 .exchange().expectStatus().isUnauthorized();
 
         cliente.post().uri("http://localhost:" + puerto + "/asistente/consulta")
+                .contentType(MediaType.APPLICATION_JSON)
                 .header("X-API-Key", "clave-integracion-rag")
                 .bodyValue("{\"pregunta\":")
                 .exchange().expectStatus().isBadRequest()
@@ -112,6 +125,7 @@ class ConsultaRagBlockHoundIntegracionTest {
         circuitos.circuitBreaker("asistenteProtocolos").transitionToOpenState();
         long inicio = System.nanoTime();
         cliente.post().uri("http://localhost:" + puerto + "/asistente/consulta")
+                .contentType(MediaType.APPLICATION_JSON)
                 .header("X-API-Key", "clave-integracion-rag")
                 .bodyValue("{\"pregunta\":\"manejo inicial de crisis hipertensiva\"}")
                 .exchange().expectStatus().isEqualTo(503)

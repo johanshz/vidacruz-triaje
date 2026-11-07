@@ -78,7 +78,7 @@ Todas las respuestas incluyen `X-Trace-Id`. Los errores usan ProblemDetail: 401 
 |---|---|---|
 | `ANTHROPIC_API_KEY` | No al arrancar | Clave de Anthropic; sin ella la consulta de IA responde 503 `IA_NO_DISPONIBLE` |
 | `ASISTENTE_MODELO` | No, `claude-sonnet-5-5` | Modelo de chat |
-| `ASISTENTE_UMBRAL_SIMILITUD` | No, `0.75` inicial | Umbral de recuperación; requiere calibración para fijar su valor final |
+| `ASISTENTE_UMBRAL_SIMILITUD` | No, `0.55` | Umbral de recuperación, calibrado con el modelo ONNX real y las 3 consultas (`desarrollo-ia/asistente/comparacion-modelos.md`) |
 | `ASISTENTE_TOP_K` | No, `3` | Máximo de fragmentos recuperados |
 | `ASISTENTE_IA_TIMEOUT` | No, `10s` | Límite de la llamada al chat |
 | `ASISTENTE_EMBEDDINGS_TIMEOUT` | No, `10s` | Límite de la búsqueda y generación local de embeddings |
@@ -123,14 +123,10 @@ devuelve 503 `IA_NO_DISPONIBLE`.
 La pregunta debe contener de 3 a 500 caracteres tras recortarla (S-15). No cobertura o rechazo de
 una barrera devuelve 200 con el aviso fijo (S-16); las cifras se validan contra fragmentos, no contra
 la pregunta (S-17). La clave de Anthropic no es necesaria durante el arranque (S-18). El error 503
-usa `codigo: IA_NO_DISPONIBLE` (S-19). El umbral `0.75` es provisional (S-08), pendiente de
-calibración con las tres consultas y el modelo ONNX real. **PE pendiente de Johan:** ejecutar también la prueba de integración CA-22 con BlockHound cuando estén disponibles `model.onnx` y `tokenizer.json`; hasta entonces esa prueba se omite explícitamente y el índice no se declara calibrado.
+usa `codigo: IA_NO_DISPONIBLE` (S-19). El umbral `0.55` quedó calibrado (S-08): las preguntas con protocolo puntúan ≥ 0,70 y la de diabetes ≤ 0,35; se indexa título + sección + texto. La prueba de integración CA-22 con BlockHound corre cuando están `model.onnx` y `tokenizer.json`.
 
-### Pendientes de ejecución con credenciales/modelo reales
+### Verificación en vivo (2026-11-07)
 
-- **PE-01 — Johan:** ejecutar la comparación Sonnet 5.5/Haiku 5.5 con las tres consultas y registrar
-  respuesta, fuentes, resultado de las cinco barreras, latencia, costo estimado y decisión en
-  `desarrollo-ia/asistente/comparacion-modelos.md`. Sonnet permanece como modelo por defecto hasta
-  completar la comparación.
-- **PE-02 — Johan:** calibrar el umbral con el modelo ONNX real y las consultas de `PROTO-001`,
-  `PROTO-002` y sin protocolo; registrar el resultado antes de fijar el umbral final.
+Con la clave real y el modelo ONNX: crisis hipertensiva → PROTO-001, sepsis → PROTO-002, diabetes tipo 2 →
+"no existe protocolo". Sonnet 5.5 queda por defecto; Haiku 5.5 devuelve contenido vacío a través de Spring AI 1.1.
+Detalle, datos de calibración y errores corregidos: `desarrollo-ia/asistente/comparacion-modelos.md` del proyecto.
