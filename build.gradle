@@ -1,5 +1,7 @@
 plugins {
     id 'base'
+    id 'java'
+    id 'jacoco-report-aggregation'
     id 'org.springframework.boot' version '3.5.16' apply false
     id 'io.spring.dependency-management' version '1.1.7' apply false
 }
@@ -12,11 +14,66 @@ allprojects {
 
 subprojects {
     apply plugin: 'java'
+    apply plugin: 'jacoco'
     apply plugin: 'io.spring.dependency-management'
     dependencyManagement {
         imports { mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES }
     }
     java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
-    dependencies { testImplementation 'org.junit.jupiter:junit-jupiter' }
-    tasks.withType(Test).configureEach { useJUnitPlatform() }
+    dependencies {
+        testImplementation 'org.junit.jupiter:junit-jupiter'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+        jvmArgs '-XX:+AllowRedefinitionToAddDeleteMethods'
+    }
 }
+
+tasks.named('build') {
+    dependsOn subprojects.collect { proyecto -> proyecto.tasks.named('build') }
+}
+
+dependencies {
+    jacocoAggregation project(':dominio')
+    jacocoAggregation project(':aplicacion')
+    jacocoAggregation project(':infraestructura')
+}
+
+tasks.named('testCodeCoverageReport') {
+    dependsOn tasks.named('classes')
+    dependsOn subprojects.collect { proyecto -> proyecto.tasks.named('classes') }
+    reports {
+        xml.required = true
+        xml.outputLocation = layout.buildDirectory.file('reports/jacoco/test/jacocoTestReport.xml')
+        html.required = true
+    }
+    classDirectories.setFrom(files(classDirectories.files.collect { classDirectory ->
+        fileTree(dir: classDirectory, exclude: ['**/Aplicacion.class', '**/package-info.class'])
+    }))
+}
+tasks.named('check') { dependsOn tasks.named('testCodeCoverageReport') }
+tasks.register('jacocoCoverageVerification') {
+    dependsOn tasks.named('testCodeCoverageReport')
+    onlyIf {
+        !gradle.startParameter.excludedTaskNames.any { nombre -> nombre == 'test' || nombre.endsWith(':test') }
+    }
+    doLast {
+        def report = layout.buildDirectory.file('reports/jacoco/test/jacocoTestReport.xml').get().asFile
+        if (!report.exists()) throw new GradleException('No se generó el reporte agregado de JaCoCo')
+        def documentFactory = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+        documentFactory.setFeature('http://apache.org/xml/features/nonvalidating/load-external-dtd', false)
+        def documentBuilder = documentFactory.newDocumentBuilder()
+        def document = documentBuilder.parse(report)
+        def xpath = javax.xml.xpath.XPathFactory.newInstance().newXPath()
+        def line = xpath.evaluate("/report/counter[@type='LINE']", document, javax.xml.xpath.XPathConstants.NODE)
+        if (line == null) throw new GradleException('El reporte agregado no contiene el contador LINE')
+        def covered = line.getAttributes().getNamedItem('covered').getNodeValue().toBigInteger()
+        def missed = line.getAttributes().getNamedItem('missed').getNodeValue().toBigInteger()
+        def total = covered + missed
+        if (total == 0 || (covered * 100 / total) < 80) {
+            throw new GradleException("Cobertura agregada de líneas inferior al 80 %: ${covered}/${total}")
+        }
+    }
+}
+tasks.named('check') { dependsOn tasks.named('jacocoCoverageVerification') }

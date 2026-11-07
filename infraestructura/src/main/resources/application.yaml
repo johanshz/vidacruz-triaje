@@ -1,12 +1,38 @@
 server:
   port: ${SERVER_PORT:8080}
+spring:
+  application:
+    name: asistente
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2s}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    consumer:
+      group-id: ${KAFKA_GROUP_ID:asistente-urgencias}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    listener:
+      missing-topics-fatal: false
+      observation-enabled: true
+  reactor:
+    context-propagation: auto
+  main:
+    banner-mode: off
 management:
+  health:
+    redis:
+      enabled: true
   endpoints:
     web:
       exposure:
-        include: health,prometheus
+        include: health,info,prometheus
   endpoint:
     health:
+      show-details: never
       probes:
         enabled: true
       group:
@@ -14,3 +40,21 @@ management:
           include: livenessState
         readiness:
           include: readinessState
+  tracing:
+    sampling:
+      probability: 1.0
+vidacruz:
+  seguridad:
+    api-key: ${ASISTENTE_API_KEY:}
+  kafka:
+    grupo: ${KAFKA_GROUP_ID:asistente-urgencias}
+    concurrencia: ${KAFKA_CONCURRENCY:3}
+    max-poll-records: ${KAFKA_MAX_POLL_RECORDS:50}
+    reintentos:
+      intervalo-inicial: ${KAFKA_RETRY_INITIAL_MS:1000}
+      intervalo-maximo: ${KAFKA_RETRY_MAX_MS:4000}
+      multiplicador: ${KAFKA_RETRY_MULTIPLIER:2.0}
+logging:
+  structured:
+    format:
+      console: ecs
