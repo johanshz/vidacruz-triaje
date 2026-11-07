@@ -1,5 +1,7 @@
 package co.vidacruz.asistente.urgencias;
 
+import org.junit.jupiter.api.Assertions;
+
 import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
@@ -83,7 +85,7 @@ class AsistenteIntegracionTest {
         try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", kafka.getBootstrapServers()))) {
             var dlt = admin.describeTopics(List.of("triaje.eventos.DLT")).allTopicNames()
                     .get(10, TimeUnit.SECONDS).get("triaje.eventos.DLT");
-            org.junit.jupiter.api.Assertions.assertEquals(3, dlt.partitions().size());
+            Assertions.assertEquals(3, dlt.partitions().size());
             admin.createTopics(List.of(new org.apache.kafka.clients.admin.NewTopic("triaje.eventos", 3, (short) 1)))
                     .all().get(10, TimeUnit.SECONDS);
         }
@@ -106,7 +108,7 @@ class AsistenteIntegracionTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody().jsonPath("$.porNivel.URGENTE").isEqualTo(1));
-        org.junit.jupiter.api.Assertions.assertTrue(salida.getOut().contains(traceId),
+        Assertions.assertTrue(salida.getOut().contains(traceId),
                 "El traceId del evento debe aparecer en los logs del consumidor");
 
         try (KafkaProducer<String, String> productor = new KafkaProducer<>(propiedadesProductor())) {
@@ -129,7 +131,7 @@ class AsistenteIntegracionTest {
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON)
                 .expectBody().jsonPath("$.codigo").isEqualTo("NO_AUTORIZADO").returnResult();
         String traceId401 = sinClave.getResponseHeaders().getFirst("X-Trace-Id");
-        org.junit.jupiter.api.Assertions.assertTrue(new String(sinClave.getResponseBody(), StandardCharsets.UTF_8)
+        Assertions.assertTrue(new String(sinClave.getResponseBody(), StandardCharsets.UTF_8)
                 .contains("\"traceId\":\"" + traceId401 + "\""));
         cliente.post().uri("http://localhost:" + puerto + "/asistente/consulta")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -159,10 +161,10 @@ class AsistenteIntegracionTest {
                 .expectHeader().exists("X-Trace-Id")
                 .expectBody().jsonPath("$.codigo").isEqualTo("NO_ENCONTRADO").returnResult();
         String traceId404 = noEncontrado.getResponseHeaders().getFirst("X-Trace-Id");
-        org.junit.jupiter.api.Assertions.assertTrue(new String(noEncontrado.getResponseBody(), StandardCharsets.UTF_8)
+        Assertions.assertTrue(new String(noEncontrado.getResponseBody(), StandardCharsets.UTF_8)
                 .contains("\"traceId\":\"" + traceId404 + "\""));
-        org.junit.jupiter.api.Assertions.assertTrue(salida.getOut().contains(traceId401));
-        org.junit.jupiter.api.Assertions.assertTrue(salida.getOut().contains(traceId404));
+        Assertions.assertTrue(salida.getOut().contains(traceId401));
+        Assertions.assertTrue(salida.getOut().contains(traceId404));
     }
 
     @Test
@@ -211,9 +213,9 @@ class AsistenteIntegracionTest {
             await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> {
                 var registros = consumidor.poll(Duration.ofMillis(250));
                 if (!registros.isEmpty()) recibido.set(registros.iterator().next());
-                org.junit.jupiter.api.Assertions.assertNotNull(recibido.get());
+                Assertions.assertNotNull(recibido.get());
             });
-            org.junit.jupiter.api.Assertions.assertEquals("esto-no-es-json", recibido.get().value());
+            Assertions.assertEquals("esto-no-es-json", recibido.get().value());
         }
         String id = UUID.randomUUID().toString();
         try (KafkaProducer<String, String> productor = new KafkaProducer<>(propiedadesProductor())) {
@@ -256,9 +258,9 @@ class AsistenteIntegracionTest {
                 registros.forEach(registro -> {
                     if (registro.value() != null && registro.value().contains(id)) recibido.set(registro);
                 });
-                org.junit.jupiter.api.Assertions.assertNotNull(recibido.get());
+                Assertions.assertNotNull(recibido.get());
             });
-            org.junit.jupiter.api.Assertions.assertTrue(recibido.get().value().contains(id));
+            Assertions.assertTrue(recibido.get().value().contains(id));
         } finally {
             redis.start();
         }

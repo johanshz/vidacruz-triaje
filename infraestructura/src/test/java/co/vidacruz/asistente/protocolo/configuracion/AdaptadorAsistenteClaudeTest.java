@@ -1,10 +1,15 @@
 package co.vidacruz.asistente.protocolo.configuracion;
 
+import org.junit.jupiter.api.Assertions;
+import org.mockito.Mockito;
+import org.mockito.ArgumentCaptor;
+
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -12,6 +17,7 @@ import static org.mockito.Mockito.when;
 
 import co.vidacruz.asistente.configuracion.PropiedadesIa;
 import co.vidacruz.asistente.protocolo.adaptador.ia.AdaptadorAsistenteClaude;
+import co.vidacruz.asistente.protocolo.adaptador.ia.DependenciasAsistenteClaude;
 import co.vidacruz.asistente.protocolo.excepcion.ExcepcionIaNoDisponible;
 import co.vidacruz.asistente.protocolo.modelo.entidad.FragmentoProtocolo;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -56,8 +62,8 @@ class AdaptadorAsistenteClaudeTest {
         TimeLimiterRegistry limitadores = configuracion.timeLimiterRegistry(propiedades);
         CircuitBreaker circuito = circuitos.circuitBreaker("asistenteProtocolos");
         AdaptadorAsistenteClaude adaptador = new AdaptadorAsistenteClaude(
-                ChatClient.builder(modelo).build(), new ObjectMapper(), circuito,
-                limitadores.timeLimiter("asistenteProtocolos"), registro);
+                ChatClient.builder(modelo).build(), new ObjectMapper(),
+                new DependenciasAsistenteClaude(circuito, limitadores.timeLimiter("asistenteProtocolos"), registro));
         AtomicInteger llamadas = new AtomicInteger();
         when(modelo.call(any(Prompt.class))).thenAnswer(invocacion -> switch (llamadas.incrementAndGet()) {
             case 1 -> {
@@ -115,6 +121,18 @@ class AdaptadorAsistenteClaudeTest {
     }
 
     @Test
+    void jsonInvalidoEsRespuestaInvalidaSinAbrirElCircuito() {
+        var modelo = mock(ChatModel.class);
+        var adaptador = crearAdaptador(modelo, new SimpleMeterRegistry(), Duration.ofSeconds(1), 5);
+        when(modelo.call(any(Prompt.class))).thenReturn(new ChatResponse(List.of(
+                new Generation(new AssistantMessage("esto no es json")))));
+
+        StepVerifier.create(adaptador.responder(PREGUNTA, FRAGMENTOS))
+                .assertNext(respuesta -> assertTrue(respuesta.sinCobertura()))
+                .verifyComplete();
+    }
+
+    @Test
     void requestAlModeloNoIncluyeTemperatureNiThinkingDesactivado() throws Exception {
         var modelo = mock(ChatModel.class);
         var adaptador = crearAdaptador(modelo, new SimpleMeterRegistry(), Duration.ofSeconds(1), 5);
@@ -123,7 +141,7 @@ class AdaptadorAsistenteClaudeTest {
         StepVerifier.create(adaptador.responder(PREGUNTA, FRAGMENTOS))
                 .expectNextCount(1).verifyComplete();
 
-        var captor = org.mockito.ArgumentCaptor.forClass(Prompt.class);
+        var captor = forClass(Prompt.class);
         verify(modelo).call(captor.capture());
         ChatOptions opciones = captor.getValue().getOptions();
         assertTrue(opciones == null || opciones.getTemperature() == null,
@@ -138,13 +156,14 @@ class AdaptadorAsistenteClaudeTest {
         var configuracion = new ConfiguracionAsistenteProtocolos();
         var propiedades = propiedades(timeout, minimoLlamadas);
         return new AdaptadorAsistenteClaude(ChatClient.builder(modelo).build(), new ObjectMapper(),
-                configuracion.circuitBreakerRegistry(propiedades).circuitBreaker("asistenteProtocolos"),
-                configuracion.timeLimiterRegistry(propiedades).timeLimiter("asistenteProtocolos"), registro);
+                new DependenciasAsistenteClaude(
+                        configuracion.circuitBreakerRegistry(propiedades).circuitBreaker("asistenteProtocolos"),
+                        configuracion.timeLimiterRegistry(propiedades).timeLimiter("asistenteProtocolos"), registro));
     }
 
     private PropiedadesIa propiedades(Duration timeout, int minimoLlamadas) {
         return new PropiedadesIa("claude-sonnet-5-5", 0.75, 3,
-                new PropiedadesIa.Resiliencia(timeout, 10, minimoLlamadas, 50.0f,
+                new PropiedadesIa.Resiliencia(timeout, timeout, 10, minimoLlamadas, 50.0f,
                         Duration.ofSeconds(30), 2));
     }
 

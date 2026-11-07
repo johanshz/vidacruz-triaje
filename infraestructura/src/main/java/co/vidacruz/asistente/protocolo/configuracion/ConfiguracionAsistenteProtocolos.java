@@ -2,6 +2,7 @@ package co.vidacruz.asistente.protocolo.configuracion;
 
 import co.vidacruz.asistente.configuracion.PropiedadesIa;
 import co.vidacruz.asistente.protocolo.adaptador.ia.AdaptadorAsistenteClaude;
+import co.vidacruz.asistente.protocolo.adaptador.ia.DependenciasAsistenteClaude;
 import co.vidacruz.asistente.protocolo.puerto.dao.AsistenteProtocolos;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
@@ -16,9 +17,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Configuration
-@ConditionalOnProperty(name = "vidacruz.ia.corpus.cargar", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = CondicionesProtocolo.PROPIEDAD_CARGAR_CORPUS, havingValue = "true", matchIfMissing = true)
 public class ConfiguracionAsistenteProtocolos {
-    private static final String NOMBRE_CIRCUITO = "asistenteProtocolos";
 
     @Bean
     ChatClient chatClient(ChatClient.Builder builder) {
@@ -48,11 +48,17 @@ public class ConfiguracionAsistenteProtocolos {
     }
 
     @Bean
-    AsistenteProtocolos asistenteProtocolos(ChatClient chatClient, ObjectMapper mapper,
+    DependenciasAsistenteClaude dependenciasAsistenteClaude(
             CircuitBreakerRegistry circuitBreakerRegistry, TimeLimiterRegistry timeLimiterRegistry,
             MeterRegistry meterRegistry) {
-        return new AdaptadorAsistenteClaude(chatClient, mapper,
-                circuitBreakerRegistry.circuitBreaker(NOMBRE_CIRCUITO),
-                timeLimiterRegistry.timeLimiter(NOMBRE_CIRCUITO), meterRegistry);
+        return new DependenciasAsistenteClaude(
+                circuitBreakerRegistry.circuitBreaker(CondicionesProtocolo.NOMBRE_CIRCUITO),
+                timeLimiterRegistry.timeLimiter(CondicionesProtocolo.NOMBRE_CIRCUITO), meterRegistry);
+    }
+
+    @Bean
+    AsistenteProtocolos asistenteProtocolos(ChatClient chatClient, ObjectMapper mapper,
+            DependenciasAsistenteClaude dependencias) {
+        return new AdaptadorAsistenteClaude(chatClient, mapper, dependencias);
     }
 }

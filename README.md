@@ -81,6 +81,7 @@ Todas las respuestas incluyen `X-Trace-Id`. Los errores usan ProblemDetail: 401 
 | `ASISTENTE_UMBRAL_SIMILITUD` | No, `0.75` inicial | Umbral de recuperación; requiere calibración para fijar su valor final |
 | `ASISTENTE_TOP_K` | No, `3` | Máximo de fragmentos recuperados |
 | `ASISTENTE_IA_TIMEOUT` | No, `10s` | Límite de la llamada al chat |
+| `ASISTENTE_EMBEDDINGS_TIMEOUT` | No, `10s` | Límite de la búsqueda y generación local de embeddings |
 | `ASISTENTE_IA_VENTANA` | No, `10` | Tamaño de ventana del circuit breaker |
 | `ASISTENTE_IA_MINIMO_LLAMADAS` | No, `5` | Mínimo de llamadas antes de evaluar fallos |
 | `ASISTENTE_IA_PORCENTAJE_FALLOS` | No, `50` | Porcentaje de fallos para abrir el circuito |

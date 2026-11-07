@@ -15,7 +15,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Configuration
 @EnableConfigurationProperties(PropiedadesIa.class)
-@ConditionalOnProperty(name = "vidacruz.ia.corpus.cargar", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = CondicionesProtocolo.PROPIEDAD_CARGAR_CORPUS, havingValue = "true", matchIfMissing = true)
 public class ConfiguracionProtocolos {
     @Bean
     VectorStore vectorStore(EmbeddingModel embeddingModel) {
@@ -23,8 +23,8 @@ public class ConfiguracionProtocolos {
     }
 
     @Bean
-    BuscadorProtocolos buscadorProtocolos(VectorStore vectorStore) {
-        return new BuscadorProtocolosVectorStore(vectorStore);
+    BuscadorProtocolos buscadorProtocolos(VectorStore vectorStore, PropiedadesIa propiedades) {
+        return new BuscadorProtocolosVectorStore(vectorStore, propiedades);
     }
 
     @Bean

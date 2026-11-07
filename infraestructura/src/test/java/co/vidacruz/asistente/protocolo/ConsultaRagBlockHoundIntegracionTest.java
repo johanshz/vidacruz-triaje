@@ -1,8 +1,13 @@
 package co.vidacruz.asistente.protocolo;
 
+import org.junit.jupiter.api.Assertions;
+import org.mockito.Mockito;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -20,6 +25,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import java.time.Duration;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -34,7 +41,8 @@ import reactor.blockhound.BlockHound;
 @EnabledIf("co.vidacruz.asistente.protocolo.ModeloOnnxCondicion#estaDisponible")
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "vidacruz.ia.corpus.cargar=true")
+        properties = {"vidacruz.ia.corpus.cargar=true", "spring.ai.model.chat=anthropic",
+                "spring.ai.model.embedding=transformers"})
 @AutoConfigureWebTestClient
 class ConsultaRagBlockHoundIntegracionTest {
     static {
@@ -52,6 +60,8 @@ class ConsultaRagBlockHoundIntegracionTest {
     ChatModel chatModel;
     @Autowired
     WebTestClient cliente;
+    @Autowired
+    CircuitBreakerRegistry circuitos;
     @LocalServerPort
     int puerto;
 
@@ -61,6 +71,7 @@ class ConsultaRagBlockHoundIntegracionTest {
         registro.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
         registro.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
         registro.add("vidacruz.seguridad.api-key", () -> "clave-integracion-rag");
+        registro.add("spring.ai.anthropic.api-key", () -> "");
         registro.add("vidacruz.kafka.concurrencia", () -> 1);
     }
 
@@ -84,5 +95,29 @@ class ConsultaRagBlockHoundIntegracionTest {
                 .jsonPath("$.fuentes").isEmpty();
 
         verify(chatModel).call(any(Prompt.class));
+    }
+
+    @Test
+    void validaErroresHttpYClaveVaciaPermiteArranque() {
+        cliente.post().uri("http://localhost:" + puerto + "/asistente/consulta")
+                .bodyValue("{\"pregunta\":\"pregunta válida\"}")
+                .exchange().expectStatus().isUnauthorized();
+
+        cliente.post().uri("http://localhost:" + puerto + "/asistente/consulta")
+                .header("X-API-Key", "clave-integracion-rag")
+                .bodyValue("{\"pregunta\":")
+                .exchange().expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.codigo").isEqualTo("VALIDACION");
+
+        circuitos.circuitBreaker("asistenteProtocolos").transitionToOpenState();
+        long inicio = System.nanoTime();
+        cliente.post().uri("http://localhost:" + puerto + "/asistente/consulta")
+                .header("X-API-Key", "clave-integracion-rag")
+                .bodyValue("{\"pregunta\":\"manejo inicial de crisis hipertensiva\"}")
+                .exchange().expectStatus().isEqualTo(503)
+                .expectBody().jsonPath("$.codigo").isEqualTo("IA_NO_DISPONIBLE");
+        assertTrue(Duration.ofNanos(System.nanoTime() - inicio)
+                .compareTo(Duration.ofSeconds(2)) < 0);
+        verifyNoInteractions(chatModel);
     }
 }

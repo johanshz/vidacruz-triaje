@@ -1,5 +1,7 @@
 package co.vidacruz.asistente.urgencias.consulta;
 
+import org.mockito.Mockito;
+
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 

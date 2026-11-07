@@ -1,5 +1,7 @@
 package co.vidacruz.asistente.urgencias.consumidor;
 
+import org.mockito.Mockito;
+
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;

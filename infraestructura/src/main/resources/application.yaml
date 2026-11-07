@@ -84,6 +84,7 @@ vidacruz:
     top-k: ${ASISTENTE_TOP_K:3}
     resiliencia:
       timeout: ${ASISTENTE_IA_TIMEOUT:10s}
+      timeout-embeddings: ${ASISTENTE_EMBEDDINGS_TIMEOUT:10s}
       ventana: ${ASISTENTE_IA_VENTANA:10}
       minimo-llamadas: ${ASISTENTE_IA_MINIMO_LLAMADAS:5}
       porcentaje-fallos: ${ASISTENTE_IA_PORCENTAJE_FALLOS:50}

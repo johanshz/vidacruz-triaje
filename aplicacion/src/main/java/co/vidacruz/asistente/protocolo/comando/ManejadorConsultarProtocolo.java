@@ -15,6 +15,7 @@ public final class ManejadorConsultarProtocolo {
     }
 
     public Mono<ResultadoConsulta> manejar(String pregunta) {
-        return servicio.consultar(fabrica.crear(pregunta).pregunta());
+        var comando = fabrica.crear(pregunta);
+        return servicio.consultar(comando.pregunta());
     }
 }

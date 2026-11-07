@@ -2,22 +2,21 @@ package co.vidacruz.asistente.protocolo.adaptador.corpus;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
+import co.vidacruz.asistente.protocolo.adaptador.MetadatosProtocolo;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.io.ClassPathResource;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 public final class CargadorCorpus implements ApplicationRunner {
     private static final List<String> ARCHIVOS = List.of(
             "corpus/PROTO-001.json", "corpus/PROTO-002.json", "corpus/PROTO-003.json");
     private static final Map<String, Integer> SECCIONES_ESPERADAS = Map.of(
             "PROTO-001", 3, "PROTO-002", 2, "PROTO-003", 2);
+    private static final int TOTAL_SECCIONES = 7;
 
     private final ObjectMapper mapper;
     private final VectorStore vectorStore;
@@ -29,43 +28,68 @@ public final class CargadorCorpus implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments argumentos) {
-        Mono.fromRunnable(this::cargarEIndexar)
-                .subscribeOn(Schedulers.boundedElastic())
-                .then()
-                .block();
+        cargarEIndexar();
     }
 
     private void cargarEIndexar() {
         try {
-            List<Document> documentos = new ArrayList<>();
-            for (String archivo : ARCHIVOS) {
-                ProtocoloCorpus protocolo;
-                try (var entrada = new ClassPathResource(archivo).getInputStream()) {
-                    protocolo = mapper.readValue(entrada, ProtocoloCorpus.class);
-                }
-                validar(protocolo);
-                protocolo.secciones().forEach(seccion -> documentos.add(new Document(seccion.texto(), Map.of(
-                        "protocolo", protocolo.codigo(), "titulo", protocolo.titulo(), "seccion", seccion.nombre()))));
-            }
-            if (documentos.size() != 7) {
+            List<Document> documentos = ARCHIVOS.stream().flatMap(this::leerDocumentos).toList();
+            if (documentos.size() != TOTAL_SECCIONES) {
                 throw new IllegalStateException("El corpus debe contener exactamente siete secciones");
             }
             vectorStore.add(documentos);
-        } catch (IOException | RuntimeException error) {
+        } catch (RuntimeException error) {
             throw new IllegalStateException("No se pudo cargar o indexar el corpus clínico", error);
         }
     }
 
-    private void validar(ProtocoloCorpus protocolo) {
-        if (protocolo == null || protocolo.codigo() == null || protocolo.titulo() == null
-                || protocolo.secciones() == null || protocolo.secciones().size()
-                        != SECCIONES_ESPERADAS.getOrDefault(protocolo.codigo(), -1)
-                || protocolo.titulo().isBlank()
-                || protocolo.secciones().stream().anyMatch(seccion -> seccion == null
-                        || seccion.nombre() == null || seccion.nombre().isBlank()
-                        || seccion.texto() == null || seccion.texto().isBlank())) {
-            throw new IllegalStateException("El archivo del corpus tiene un esquema o contenido inválido");
+    private java.util.stream.Stream<Document> leerDocumentos(String archivo) {
+        try (var entrada = new ClassPathResource(archivo).getInputStream()) {
+            ProtocoloCorpus protocolo = mapper.readValue(entrada, ProtocoloCorpus.class);
+            validar(protocolo);
+            return protocolo.secciones().stream().map(seccion -> new Document(seccion.texto(), Map.of(
+                    MetadatosProtocolo.PROTOCOLO, protocolo.codigo(),
+                    MetadatosProtocolo.TITULO, protocolo.titulo(),
+                    MetadatosProtocolo.SECCION, seccion.nombre())));
+        } catch (IOException error) {
+            throw new IllegalStateException("No se pudo leer el archivo del corpus: " + archivo, error);
         }
+    }
+
+    void validar(ProtocoloCorpus protocolo) {
+        if (protocolo == null) throw esquemaInvalido();
+        validarCodigo(protocolo);
+        validarTitulo(protocolo);
+        validarSecciones(protocolo);
+    }
+
+    private void validarCodigo(ProtocoloCorpus protocolo) {
+        if (protocolo.codigo() == null || !SECCIONES_ESPERADAS.containsKey(protocolo.codigo())) {
+            throw esquemaInvalido();
+        }
+    }
+
+    private void validarTitulo(ProtocoloCorpus protocolo) {
+        if (protocolo.titulo() == null || protocolo.titulo().isBlank()) {
+            throw esquemaInvalido();
+        }
+    }
+
+    private void validarSecciones(ProtocoloCorpus protocolo) {
+        if (protocolo.secciones() == null || protocolo.secciones().size()
+                != SECCIONES_ESPERADAS.get(protocolo.codigo())
+                || protocolo.secciones().stream().anyMatch(this::seccionInvalida)) {
+            throw esquemaInvalido();
+        }
+    }
+
+    private boolean seccionInvalida(SeccionCorpus seccion) {
+        return seccion == null || seccion.nombre() == null || seccion.nombre().isBlank()
+                || seccion.texto() == null || seccion.texto().isBlank();
+    }
+
+    private IllegalStateException esquemaInvalido() {
+        return new IllegalStateException("El archivo del corpus tiene un esquema o contenido inválido");
     }
 
     record ProtocoloCorpus(String codigo, String titulo, List<SeccionCorpus> secciones) {

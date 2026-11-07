@@ -1,5 +1,8 @@
 package co.vidacruz.asistente.protocolo.adaptador.repositorio;
 
+import org.junit.jupiter.api.Assertions;
+import org.mockito.Mockito;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -7,6 +10,8 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
+import java.time.Duration;
+import co.vidacruz.asistente.configuracion.PropiedadesIa;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -21,7 +26,7 @@ class BuscadorProtocolosVectorStoreTest {
         Document documento = new Document("Reposo inicial", Map.of(
                 "protocolo", "PROTO-001", "titulo", "Crisis hipertensiva", "seccion", "Medidas iniciales"));
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(documento));
-        var buscador = new BuscadorProtocolosVectorStore(vectorStore);
+        var buscador = crearBuscador(vectorStore, Duration.ofSeconds(1));
 
         StepVerifier.create(buscador.buscar("manejo inicial", 0.72, 4))
                 .assertNext(fragmento -> {
@@ -39,7 +44,7 @@ class BuscadorProtocolosVectorStoreTest {
         Document documento = new Document("Texto", Map.of(
                 "protocolo", "PROTO-001", "titulo", "Título", "seccion", " "));
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(documento));
-        var buscador = new BuscadorProtocolosVectorStore(vectorStore);
+        var buscador = crearBuscador(vectorStore, Duration.ofSeconds(1));
 
         StepVerifier.create(buscador.buscar("pregunta", 0.75, 3))
                 .expectErrorMatches(error -> error instanceof IllegalStateException
@@ -52,7 +57,28 @@ class BuscadorProtocolosVectorStoreTest {
         VectorStore vectorStore = mock(VectorStore.class);
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
-        StepVerifier.create(new BuscadorProtocolosVectorStore(vectorStore).buscar("sin resultado", 0.75, 3))
+        StepVerifier.create(crearBuscador(vectorStore, Duration.ofSeconds(1)).buscar("sin resultado", 0.75, 3))
                 .verifyComplete();
+    }
+
+    @Test
+    void convierteTimeoutDeEmbeddingsEnIaNoDisponible() {
+        VectorStore vectorStore = mock(VectorStore.class);
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenAnswer(invocacion -> {
+            Thread.sleep(250);
+            return List.of();
+        });
+        var buscador = crearBuscador(vectorStore, Duration.ofMillis(30));
+
+        StepVerifier.create(buscador.buscar("pregunta", 0.75, 3))
+                .expectError(co.vidacruz.asistente.protocolo.excepcion.ExcepcionIaNoDisponible.class)
+                .verify(Duration.ofSeconds(2));
+    }
+
+    private BuscadorProtocolosVectorStore crearBuscador(VectorStore vectorStore, Duration timeout) {
+        var resiliencia = new PropiedadesIa.Resiliencia(Duration.ofSeconds(10), timeout,
+                10, 5, 50.0f, Duration.ofSeconds(30), 2);
+        return new BuscadorProtocolosVectorStore(vectorStore,
+                new PropiedadesIa("claude-sonnet-5-5", 0.75, 3, resiliencia));
     }
 }

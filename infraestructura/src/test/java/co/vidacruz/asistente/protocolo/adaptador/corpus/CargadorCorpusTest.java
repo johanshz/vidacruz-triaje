@@ -1,5 +1,7 @@
 package co.vidacruz.asistente.protocolo.adaptador.corpus;
 
+import org.junit.jupiter.api.Assertions;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
@@ -11,6 +13,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.boot.DefaultApplicationArguments;
 import org.mockito.Mockito;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class CargadorCorpusTest {
     @Test
@@ -31,5 +34,14 @@ class CargadorCorpusTest {
             assertEquals(List.of("PROTO-001", "PROTO-002", "PROTO-003"), codigos);
             return metadatosCompletos;
         }));
+    }
+
+    @Test
+    void rechazaEsquemaDeCorpusConCantidadDeSeccionesIncorrecta() {
+        var cargador = new CargadorCorpus(new ObjectMapper(), Mockito.mock(VectorStore.class));
+        var protocolo = new CargadorCorpus.ProtocoloCorpus("PROTO-001", "Crisis", List.of(
+                new CargadorCorpus.SeccionCorpus("Medidas iniciales", "Texto")));
+
+        assertThrows(IllegalStateException.class, () -> cargador.validar(protocolo));
     }
 }

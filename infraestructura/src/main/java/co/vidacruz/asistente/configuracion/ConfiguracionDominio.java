@@ -5,6 +5,8 @@ import co.vidacruz.asistente.urgencias.servicio.ServicioActualizarUrgencias;
 import co.vidacruz.asistente.protocolo.puerto.dao.AsistenteProtocolos;
 import co.vidacruz.asistente.protocolo.puerto.dao.BuscadorProtocolos;
 import co.vidacruz.asistente.protocolo.servicio.ServicioConsultarProtocolo;
+import co.vidacruz.asistente.protocolo.servicio.ParametrosBusqueda;
+import co.vidacruz.asistente.protocolo.configuracion.CondicionesProtocolo;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,10 +19,10 @@ public class ConfiguracionDominio {
     }
 
     @Bean
-    @ConditionalOnProperty(name = "vidacruz.ia.corpus.cargar", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(name = CondicionesProtocolo.PROPIEDAD_CARGAR_CORPUS, havingValue = "true", matchIfMissing = true)
     ServicioConsultarProtocolo servicioConsultarProtocolo(BuscadorProtocolos buscador,
             AsistenteProtocolos asistente, PropiedadesIa propiedades) {
         return new ServicioConsultarProtocolo(buscador, asistente,
-                propiedades.umbralSimilitud(), propiedades.topK());
+                new ParametrosBusqueda(propiedades.umbralSimilitud(), propiedades.topK()));
     }
 }

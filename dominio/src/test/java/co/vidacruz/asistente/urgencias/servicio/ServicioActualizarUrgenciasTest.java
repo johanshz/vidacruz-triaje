@@ -1,5 +1,7 @@
 package co.vidacruz.asistente.urgencias.servicio;
 
+import org.mockito.Mockito;
+
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -62,6 +64,6 @@ class ServicioActualizarUrgenciasTest {
         StepVerifier.create(servicio.actualizar("tipo_nuevo", "p-1", null)).verifyComplete();
         StepVerifier.create(servicio.actualizar("paciente_registrado", "p-1", "CRITICO")).verifyComplete();
         StepVerifier.create(servicio.actualizar("paciente_registrado", "p-1", "CRITICO")).verifyComplete();
-        verify(repositorio, org.mockito.Mockito.times(2)).agregar(NivelUrgencias.CRITICO, "p-1");
+        verify(repositorio, Mockito.times(2)).agregar(NivelUrgencias.CRITICO, "p-1");
     }
 }

@@ -1,5 +1,8 @@
 package co.vidacruz.asistente.protocolo.servicio;
 
+import org.junit.jupiter.api.Assertions;
+import org.mockito.Mockito;
+
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -10,6 +13,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import co.vidacruz.asistente.comun.excepcion.ExcepcionValidacion;
 import co.vidacruz.asistente.protocolo.modelo.dto.FuenteProtocolo;
 import co.vidacruz.asistente.protocolo.modelo.dto.RespuestaGenerada;
+import co.vidacruz.asistente.protocolo.modelo.dto.ResultadoConsulta;
 import co.vidacruz.asistente.protocolo.modelo.entidad.FragmentoProtocolo;
 import co.vidacruz.asistente.protocolo.puerto.dao.AsistenteProtocolos;
 import co.vidacruz.asistente.protocolo.puerto.dao.BuscadorProtocolos;
@@ -32,7 +36,7 @@ class ServicioConsultarProtocoloTest {
 
     @BeforeEach
     void setUp() {
-        servicio = new ServicioConsultarProtocolo(buscador, asistente, 0.75, 3);
+        servicio = new ServicioConsultarProtocolo(buscador, asistente, new ParametrosBusqueda(0.75, 3));
     }
 
     @Test
@@ -41,10 +45,10 @@ class ServicioConsultarProtocoloTest {
 
         StepVerifier.create(servicio.consultar(" ¿hay diabetes? "))
                 .assertNext(resultado -> {
-                    org.junit.jupiter.api.Assertions.assertEquals("sin_cobertura", resultado.resultado());
-                    org.junit.jupiter.api.Assertions.assertEquals(ServicioConsultarProtocolo.AVISO_SIN_COBERTURA,
+                    Assertions.assertEquals(ResultadoConsulta.Estado.SIN_COBERTURA, resultado.resultado());
+                    Assertions.assertEquals(ServicioConsultarProtocolo.AVISO_SIN_COBERTURA,
                             resultado.respuesta().respuesta());
-                    org.junit.jupiter.api.Assertions.assertTrue(resultado.respuesta().fuentes().isEmpty());
+                    Assertions.assertTrue(resultado.respuesta().fuentes().isEmpty());
                 })
                 .verifyComplete();
 
@@ -62,10 +66,40 @@ class ServicioConsultarProtocoloTest {
 
         StepVerifier.create(servicio.consultar("¿qué medida?"))
                 .assertNext(resultado -> {
-                    org.junit.jupiter.api.Assertions.assertEquals("respondida", resultado.resultado());
-                    org.junit.jupiter.api.Assertions.assertEquals(List.of(fuente), resultado.respuesta().fuentes());
+                    Assertions.assertEquals(ResultadoConsulta.Estado.RESPONDIDA, resultado.resultado());
+                    Assertions.assertEquals(List.of(fuente), resultado.respuesta().fuentes());
                 })
                 .verifyComplete();
+    }
+
+    @Test
+    void aceptaCifraConUnidadPegadaYDevuelveGrafiaDeMetadatos() {
+        FragmentoProtocolo fragmento = fragmento("PROTO-001", "Medidas iniciales", "administrar 50ml/kg");
+        when(buscador.buscar("dosificar", 0.75, 3)).thenReturn(Flux.just(fragmento));
+        when(asistente.responder("dosificar", List.of(fragmento))).thenReturn(Mono.just(new RespuestaGenerada(
+                "Administrar 50ml/kg", List.of(new FuenteProtocolo("proto-001", "Medidas  iniciales")), false)));
+
+        StepVerifier.create(servicio.consultar("dosificar"))
+                .assertNext(resultado -> {
+                    Assertions.assertEquals(ResultadoConsulta.Estado.RESPONDIDA, resultado.resultado());
+                    Assertions.assertEquals("PROTO-001",
+                            resultado.respuesta().fuentes().getFirst().protocolo());
+                    Assertions.assertEquals("Medidas iniciales",
+                            resultado.respuesta().fuentes().getFirst().seccion());
+                }).verifyComplete();
+    }
+
+    @Test
+    void rechazaCitasDuplicadasAunqueTenganGrafiaDistinta() {
+        FragmentoProtocolo fragmento = fragmento("PROTO-001", "Medidas iniciales", "reposo 5 minutos");
+        FuenteProtocolo fuente = new FuenteProtocolo("PROTO-001", "Medidas iniciales");
+        when(buscador.buscar("pregunta", 0.75, 3)).thenReturn(Flux.just(fragmento));
+        when(asistente.responder("pregunta", List.of(fragmento))).thenReturn(Mono.just(new RespuestaGenerada(
+                "Reposo 5 minutos", List.of(fuente, new FuenteProtocolo("proto-001", "medidas iniciales")), false)));
+
+        StepVerifier.create(servicio.consultar("pregunta"))
+                .assertNext(resultado -> Assertions.assertEquals(
+                        ResultadoConsulta.Estado.BARRERA_RECHAZADA, resultado.resultado())).verifyComplete();
     }
 
     @Test
@@ -76,8 +110,35 @@ class ServicioConsultarProtocoloTest {
                 "Reposar 5 min", List.of(new FuenteProtocolo("PROTO-999", "Medidas iniciales")), false)));
 
         StepVerifier.create(servicio.consultar("pregunta"))
-                .assertNext(resultado -> org.junit.jupiter.api.Assertions.assertEquals(
-                        "barrera_rechazada", resultado.resultado()))
+                .assertNext(resultado -> Assertions.assertEquals(
+                        ResultadoConsulta.Estado.BARRERA_RECHAZADA, resultado.resultado()))
+                .verifyComplete();
+    }
+
+    @Test
+    void fuentesVaciasConRespuestaNoVaciaDevuelveAviso() {
+        FragmentoProtocolo fragmento = fragmento("PROTO-001", "Medidas iniciales", "reposo 5 min");
+        when(buscador.buscar("pregunta", 0.75, 3)).thenReturn(Flux.just(fragmento));
+        when(asistente.responder("pregunta", List.of(fragmento))).thenReturn(Mono.just(
+                new RespuestaGenerada("Reposar 5 min", List.of(), false)));
+
+        StepVerifier.create(servicio.consultar("pregunta"))
+                .assertNext(resultado -> Assertions.assertEquals(
+                        ResultadoConsulta.Estado.BARRERA_RECHAZADA, resultado.resultado()))
+                .verifyComplete();
+    }
+
+    @Test
+    void respuestaEnBlancoDevuelveAviso() {
+        FragmentoProtocolo fragmento = fragmento("PROTO-001", "Medidas iniciales", "reposo 5 min");
+        FuenteProtocolo fuente = new FuenteProtocolo("PROTO-001", "Medidas iniciales");
+        when(buscador.buscar("pregunta", 0.75, 3)).thenReturn(Flux.just(fragmento));
+        when(asistente.responder("pregunta", List.of(fragmento))).thenReturn(Mono.just(
+                new RespuestaGenerada("  ", List.of(fuente), false)));
+
+        StepVerifier.create(servicio.consultar("pregunta"))
+                .assertNext(resultado -> Assertions.assertEquals(
+                        ResultadoConsulta.Estado.BARRERA_RECHAZADA, resultado.resultado()))
                 .verifyComplete();
     }
 
@@ -90,8 +151,8 @@ class ServicioConsultarProtocoloTest {
                 .thenReturn(Mono.just(new RespuestaGenerada("La presión es 200 mmHg", List.of(fuente), false)));
 
         StepVerifier.create(servicio.consultar("¿presión 200 mmHg?"))
-                .assertNext(resultado -> org.junit.jupiter.api.Assertions.assertEquals(
-                        "barrera_rechazada", resultado.resultado()))
+                .assertNext(resultado -> Assertions.assertEquals(
+                        ResultadoConsulta.Estado.BARRERA_RECHAZADA, resultado.resultado()))
                 .verifyComplete();
     }
 
@@ -105,7 +166,7 @@ class ServicioConsultarProtocoloTest {
                 "3-5 % y 180/120", List.of(fuente), false)));
 
         StepVerifier.create(servicio.consultar("rangos"))
-                .assertNext(resultado -> org.junit.jupiter.api.Assertions.assertEquals("respondida", resultado.resultado()))
+                .assertNext(resultado -> Assertions.assertEquals(ResultadoConsulta.Estado.RESPONDIDA, resultado.resultado()))
                 .verifyComplete();
     }
 
@@ -118,10 +179,10 @@ class ServicioConsultarProtocoloTest {
         when(buscador.buscar(anyString(), eq(0.75), eq(3))).thenReturn(Flux.empty());
 
         StepVerifier.create(servicio.consultar("x".repeat(3)))
-                .assertNext(resultado -> org.junit.jupiter.api.Assertions.assertEquals("sin_cobertura", resultado.resultado()))
+                .assertNext(resultado -> Assertions.assertEquals(ResultadoConsulta.Estado.SIN_COBERTURA, resultado.resultado()))
                 .verifyComplete();
         StepVerifier.create(servicio.consultar("x".repeat(500) + " "))
-                .assertNext(resultado -> org.junit.jupiter.api.Assertions.assertEquals("sin_cobertura", resultado.resultado()))
+                .assertNext(resultado -> Assertions.assertEquals(ResultadoConsulta.Estado.SIN_COBERTURA, resultado.resultado()))
                 .verifyComplete();
     }
 
@@ -133,8 +194,8 @@ class ServicioConsultarProtocoloTest {
                 .thenReturn(Mono.just(RespuestaGenerada.invalida()));
 
         StepVerifier.create(servicio.consultar("pregunta"))
-                .assertNext(resultado -> org.junit.jupiter.api.Assertions.assertEquals(
-                        "barrera_rechazada", resultado.resultado()))
+                .assertNext(resultado -> Assertions.assertEquals(
+                        ResultadoConsulta.Estado.BARRERA_RECHAZADA, resultado.resultado()))
                 .verifyComplete();
     }
 

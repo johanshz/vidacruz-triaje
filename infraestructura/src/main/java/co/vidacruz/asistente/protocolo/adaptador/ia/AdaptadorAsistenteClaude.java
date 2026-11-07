@@ -21,6 +21,11 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public final class AdaptadorAsistenteClaude implements AsistenteProtocolos {
+    private static final String METRICA_LATENCIA = "asistente.llm.latencia";
+    private static final String ETIQUETA_RESULTADO = "resultado";
+    private static final String RESULTADO_OK = "ok";
+    private static final String RESULTADO_ERROR = "error";
+    private static final String RESULTADO_CIRCUITO_ABIERTO = "circuito_abierto";
     private static final String INSTRUCCIONES = "Eres un asistente clínico limitado a los fragmentos oficiales recibidos. "
             + "No agregues conocimiento externo. Devuelve únicamente JSON con campos respuesta (texto), "
             + "fuentes (lista de objetos protocolo y seccion) y sinCobertura (boolean). "
@@ -28,48 +33,50 @@ public final class AdaptadorAsistenteClaude implements AsistenteProtocolos {
 
     private final ChatClient chatClient;
     private final ObjectMapper mapper;
-    private final CircuitBreaker circuitBreaker;
-    private final TimeLimiter timeLimiter;
-    private final MeterRegistry meterRegistry;
+    private final DependenciasAsistenteClaude dependencias;
 
     public AdaptadorAsistenteClaude(ChatClient chatClient, ObjectMapper mapper,
-            CircuitBreaker circuitBreaker, TimeLimiter timeLimiter,
-            MeterRegistry meterRegistry) {
+            DependenciasAsistenteClaude dependencias) {
         this.chatClient = chatClient;
         this.mapper = mapper;
-        this.circuitBreaker = circuitBreaker;
-        this.timeLimiter = timeLimiter;
-        this.meterRegistry = meterRegistry;
+        this.dependencias = dependencias;
     }
 
     @Override
     public Mono<RespuestaGenerada> responder(String pregunta, List<FragmentoProtocolo> fragmentos) {
         return Mono.defer(() -> {
-            Timer.Sample medicion = Timer.start(meterRegistry);
-            AtomicReference<String> resultado = new AtomicReference<>("ok");
+            Timer.Sample medicion = Timer.start(dependencias.meterRegistry());
+            AtomicReference<String> resultado = new AtomicReference<>(RESULTADO_OK);
             return Mono.fromCallable(() -> generarJson(pregunta, fragmentos))
                     .subscribeOn(Schedulers.boundedElastic())
-                    .transformDeferred(TimeLimiterOperator.of(timeLimiter))
-                    .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
+                    .transformDeferred(TimeLimiterOperator.of(dependencias.timeLimiter()))
+                    .transformDeferred(CircuitBreakerOperator.of(dependencias.circuitBreaker()))
                     .doOnError(error -> resultado.set(error instanceof CallNotPermittedException
-                            ? "circuito_abierto" : "error"))
-                    .doFinally(senal -> medicion.stop(meterRegistry.timer(
-                            "asistente.llm.latencia", "resultado", resultado.get())))
+                            ? RESULTADO_CIRCUITO_ABIERTO : RESULTADO_ERROR))
+                    .doFinally(senal -> medicion.stop(dependencias.meterRegistry().timer(
+                            METRICA_LATENCIA, ETIQUETA_RESULTADO, resultado.get())))
                     .onErrorMap(error -> new ExcepcionIaNoDisponible(error));
         });
     }
 
     private RespuestaGenerada generarJson(String pregunta, List<FragmentoProtocolo> fragmentos) {
-        String prompt = construirPrompt(pregunta, fragmentos);
-        String contenido = chatClient.prompt()
+        String contenido = solicitarContenido(pregunta, fragmentos);
+        return deserializar(contenido);
+    }
+
+    private String solicitarContenido(String pregunta, List<FragmentoProtocolo> fragmentos) {
+        return chatClient.prompt()
                 .system(INSTRUCCIONES)
-                .user(prompt)
+                .user(construirPrompt(pregunta, fragmentos))
                 .call()
                 .content();
+    }
+
+    private RespuestaGenerada deserializar(String contenido) {
         try {
             RespuestaGenerada respuesta = mapper.readValue(contenido, RespuestaGenerada.class);
             return respuesta == null ? RespuestaGenerada.invalida() : respuesta;
-        } catch (JsonProcessingException error) {
+        } catch (JsonProcessingException | NullPointerException | IllegalArgumentException error) {
             return RespuestaGenerada.invalida();
         }
     }

@@ -6,7 +6,7 @@ public record RespuestaGenerada(String respuesta, List<FuenteProtocolo> fuentes,
         boolean sinCobertura) {
     public RespuestaGenerada {
         respuesta = respuesta == null ? "" : respuesta;
-        fuentes = fuentes == null ? List.of() : List.copyOf(fuentes);
+        fuentes = List.copyOf(fuentes);
     }
 
     public static RespuestaGenerada invalida() {

@@ -4,6 +4,7 @@ import co.vidacruz.asistente.urgencias.consulta.ManejadorConsultarEstadoUrgencia
 import co.vidacruz.asistente.protocolo.comando.FabricaConsultaProtocolo;
 import co.vidacruz.asistente.protocolo.comando.ManejadorConsultarProtocolo;
 import co.vidacruz.asistente.protocolo.servicio.ServicioConsultarProtocolo;
+import co.vidacruz.asistente.protocolo.configuracion.CondicionesProtocolo;
 import co.vidacruz.asistente.urgencias.puerto.dao.DaoUrgencias;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,13 +18,13 @@ public class ConfiguracionAplicacion {
     }
 
     @Bean
-    @ConditionalOnProperty(name = "vidacruz.ia.corpus.cargar", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(name = CondicionesProtocolo.PROPIEDAD_CARGAR_CORPUS, havingValue = "true", matchIfMissing = true)
     FabricaConsultaProtocolo fabricaConsultaProtocolo() {
         return new FabricaConsultaProtocolo();
     }
 
     @Bean
-    @ConditionalOnProperty(name = "vidacruz.ia.corpus.cargar", havingValue = "true", matchIfMissing = true)
+    @ConditionalOnProperty(name = CondicionesProtocolo.PROPIEDAD_CARGAR_CORPUS, havingValue = "true", matchIfMissing = true)
     ManejadorConsultarProtocolo manejadorConsultarProtocolo(FabricaConsultaProtocolo fabrica,
             ServicioConsultarProtocolo servicio) {
         return new ManejadorConsultarProtocolo(fabrica, servicio);

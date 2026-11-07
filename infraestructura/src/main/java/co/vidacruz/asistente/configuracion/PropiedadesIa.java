@@ -15,7 +15,7 @@ public record PropiedadesIa(@NotBlank String modelo,
         @DecimalMin("0.0") @DecimalMax("1.0") double umbralSimilitud,
         @Positive int topK, @Valid Resiliencia resiliencia) {
 
-    public record Resiliencia(Duration timeout, @Positive int ventana,
+    public record Resiliencia(Duration timeout, Duration timeoutEmbeddings, @Positive int ventana,
             @Positive int minimoLlamadas, @DecimalMin("1.0") @DecimalMax("100.0") float porcentajeFallos,
             Duration esperaAbierto, @Positive int llamadasSemiabierto) {
     }

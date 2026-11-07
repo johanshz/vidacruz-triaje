@@ -1,5 +1,8 @@
 package co.vidacruz.asistente.urgencias.adaptador.dao;
 
+import org.junit.jupiter.api.Assertions;
+import org.mockito.Mockito;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;

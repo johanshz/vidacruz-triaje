@@ -1,5 +1,8 @@
 package co.vidacruz.asistente.protocolo;
 
+import org.junit.jupiter.api.Assertions;
+import org.mockito.Mockito;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -29,12 +32,14 @@ class MetricasConsultaProtocoloTest {
     @Test
     void cuentaCadaResultadoYLosLogsNoIncluyenPreguntaNiRespuesta() {
         for (String resultado : List.of("respondida", "sin_cobertura", "barrera_rechazada")) {
+            var estado = java.util.Arrays.stream(ResultadoConsulta.Estado.values())
+                    .filter(valor -> valor.etiqueta().equals(resultado)).findFirst().orElseThrow();
             var manejador = mock(ManejadorConsultarProtocolo.class);
             var metricas = new SimpleMeterRegistry();
             when(manejador.manejar(anyString())).thenReturn(Mono.just(new ResultadoConsulta(
                     new RespuestaConsulta(RESPUESTA_PRIVADA,
                             List.of(new FuenteProtocolo("PROTO-001", "Medidas iniciales"))),
-                    resultado, PREGUNTA_PRIVADA.length(), List.of("PROTO-001"))));
+                    estado, PREGUNTA_PRIVADA.length(), List.of("PROTO-001"))));
 
             Logger logger = (Logger) LoggerFactory.getLogger(ConsultaControladorProtocolo.class);
             var appender = new ListAppender<ILoggingEvent>();

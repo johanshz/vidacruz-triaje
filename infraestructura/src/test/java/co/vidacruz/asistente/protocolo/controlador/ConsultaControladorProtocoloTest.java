@@ -1,6 +1,11 @@
 package co.vidacruz.asistente.protocolo.controlador;
 
+import org.junit.jupiter.api.Assertions;
+import org.mockito.Mockito;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -19,10 +24,11 @@ import reactor.core.publisher.Mono;
 class ConsultaControladorProtocoloTest {
     @Test
     void consultaValidaRespondeYRegistraResultadoSinExponerPregunta() {
-        var manejador = org.mockito.Mockito.mock(ManejadorConsultarProtocolo.class);
+        var manejador = mock(ManejadorConsultarProtocolo.class);
         var metricas = new SimpleMeterRegistry();
         when(manejador.manejar(any())).thenReturn(Mono.just(new ResultadoConsulta(
-                new RespuestaConsulta("Acción protocolizada", List.of()), "respondida", 19, List.of("PROTO-001"))));
+                new RespuestaConsulta("Acción protocolizada", List.of()), ResultadoConsulta.Estado.RESPONDIDA,
+                19, List.of("PROTO-001"))));
         var cliente = cliente(manejador, metricas);
 
         cliente.post().uri("/asistente/consulta").contentType(MediaType.APPLICATION_JSON)
@@ -30,13 +36,13 @@ class ConsultaControladorProtocoloTest {
                 .expectStatus().isOk().expectBody().jsonPath("$.respuesta").isEqualTo("Acción protocolizada");
 
         verify(manejador).manejar("pregunta confidencial");
-        org.junit.jupiter.api.Assertions.assertEquals(1.0, metricas.get("asistente.consultas")
+        assertEquals(1.0, metricas.get("asistente.consultas")
                 .tag("resultado", "respondida").counter().count());
     }
 
     @Test
     void entradaNoTextualYJsonInvalidoResponden400Validacion() {
-        var cliente = cliente(org.mockito.Mockito.mock(ManejadorConsultarProtocolo.class), new SimpleMeterRegistry());
+        var cliente = cliente(mock(ManejadorConsultarProtocolo.class), new SimpleMeterRegistry());
 
         cliente.post().uri("/asistente/consulta").contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"pregunta\":123}").exchange().expectStatus().isBadRequest()
@@ -56,7 +62,7 @@ class ConsultaControladorProtocoloTest {
 
     @Test
     void falloDelProveedorSeTraduceA503YContadorNoDisponible() {
-        var manejador = org.mockito.Mockito.mock(ManejadorConsultarProtocolo.class);
+        var manejador = mock(ManejadorConsultarProtocolo.class);
         var metricas = new SimpleMeterRegistry();
         when(manejador.manejar(any())).thenReturn(Mono.error(new ExcepcionIaNoDisponible(new IllegalStateException())));
 
@@ -64,7 +70,7 @@ class ConsultaControladorProtocoloTest {
                 .bodyValue("{\"pregunta\":\"pregunta válida\"}").exchange()
                 .expectStatus().isEqualTo(503).expectBody().jsonPath("$.codigo").isEqualTo("IA_NO_DISPONIBLE");
 
-        org.junit.jupiter.api.Assertions.assertEquals(1.0, metricas.get("asistente.consultas")
+        assertEquals(1.0, metricas.get("asistente.consultas")
                 .tag("resultado", "no_disponible").counter().count());
     }
 

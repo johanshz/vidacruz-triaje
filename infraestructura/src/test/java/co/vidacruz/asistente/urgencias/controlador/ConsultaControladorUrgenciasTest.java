@@ -1,5 +1,7 @@
 package co.vidacruz.asistente.urgencias.controlador;
 
+import org.mockito.Mockito;
+
 import static org.mockito.Mockito.when;
 
 import co.vidacruz.asistente.configuracion.ManejadorGlobalErrores;
@@ -15,7 +17,7 @@ import reactor.core.publisher.Mono;
 class ConsultaControladorUrgenciasTest {
     @Test
     void respondeEstadoDevueltoPorManejador() {
-        var manejador = org.mockito.Mockito.mock(ManejadorConsultarEstadoUrgencias.class);
+        var manejador = Mockito.mock(ManejadorConsultarEstadoUrgencias.class);
         when(manejador.manejar()).thenReturn(Mono.just(new DtoEstadoUrgencias(0, Map.of(), Instant.parse("2026-11-08T10:00:00Z"))));
         WebTestClient cliente = WebTestClient.bindToController(new ConsultaControladorUrgencias(manejador)).build();
         cliente.get().uri("/asistente/estado-urgencias").exchange().expectStatus().isOk()
@@ -25,7 +27,7 @@ class ConsultaControladorUrgenciasTest {
 
     @Test
     void traduceRedisNoDisponibleA503YErrorInternoA500Generico() {
-        var manejador = org.mockito.Mockito.mock(ManejadorConsultarEstadoUrgencias.class);
+        var manejador = Mockito.mock(ManejadorConsultarEstadoUrgencias.class);
         when(manejador.manejar()).thenReturn(Mono.error(new ExcepcionUrgenciasNoDisponible(new IllegalStateException("redis"))));
         WebTestClient cliente = WebTestClient.bindToController(new ConsultaControladorUrgencias(manejador))
                 .controllerAdvice(new ManejadorGlobalErrores()).build();

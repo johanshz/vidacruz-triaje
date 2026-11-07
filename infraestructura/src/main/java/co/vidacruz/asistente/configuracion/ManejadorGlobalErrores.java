@@ -22,7 +22,7 @@ public class ManejadorGlobalErrores {
 
     @ExceptionHandler(ExcepcionValidacion.class)
     ResponseEntity<ProblemDetail> validacion(ExcepcionValidacion excepcion, ServerWebExchange intercambio) {
-        ProblemDetail problema = crear(HttpStatus.BAD_REQUEST, excepcion.getMessage(), excepcion.codigo(), intercambio, true);
+        ProblemDetail problema = crear(HttpStatus.BAD_REQUEST, excepcion.getMessage(), excepcion.codigo(), intercambio);
         problema.setProperty("campo", excepcion.campo());
         return ResponseEntity.badRequest().body(problema);
     }
@@ -30,24 +30,24 @@ public class ManejadorGlobalErrores {
     @ExceptionHandler(ExcepcionRecursoNoEncontrado.class)
     ResponseEntity<ProblemDetail> noEncontrado(ExcepcionRecursoNoEncontrado excepcion, ServerWebExchange intercambio) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(crear(HttpStatus.NOT_FOUND, excepcion.getMessage(), excepcion.codigo(), intercambio, true));
+                .body(crear(HttpStatus.NOT_FOUND, excepcion.getMessage(), excepcion.codigo(), intercambio));
     }
 
     @ExceptionHandler(ExcepcionUrgenciasNoDisponible.class)
     ResponseEntity<ProblemDetail> urgenciasNoDisponible(ExcepcionUrgenciasNoDisponible excepcion, ServerWebExchange intercambio) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(crear(HttpStatus.SERVICE_UNAVAILABLE, excepcion.getMessage(), excepcion.codigo(), intercambio, true));
+                .body(crear(HttpStatus.SERVICE_UNAVAILABLE, excepcion.getMessage(), excepcion.codigo(), intercambio));
     }
 
     @ExceptionHandler(ExcepcionIaNoDisponible.class)
     ResponseEntity<ProblemDetail> iaNoDisponible(ExcepcionIaNoDisponible excepcion, ServerWebExchange intercambio) {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(crear(HttpStatus.SERVICE_UNAVAILABLE, excepcion.getMessage(), excepcion.codigo(), intercambio, true));
+                .body(crear(HttpStatus.SERVICE_UNAVAILABLE, excepcion.getMessage(), excepcion.codigo(), intercambio));
     }
 
     @ExceptionHandler(ServerWebInputException.class)
     ResponseEntity<ProblemDetail> entradaInvalida(ServerWebInputException excepcion, ServerWebExchange intercambio) {
-        ProblemDetail problema = crear(HttpStatus.BAD_REQUEST, "La solicitud no es válida", "VALIDACION", intercambio, true);
+        ProblemDetail problema = crear(HttpStatus.BAD_REQUEST, "La solicitud no es válida", "VALIDACION", intercambio);
         if ("/asistente/consulta".equals(intercambio.getRequest().getPath().value())) {
             problema.setProperty("campo", "pregunta");
         }
@@ -59,23 +59,23 @@ public class ManejadorGlobalErrores {
         HttpStatus estado = HttpStatus.valueOf(excepcion.getStatusCode().value());
         String codigo = estado == HttpStatus.NOT_FOUND ? "NO_ENCONTRADO" : "SOLICITUD_INVALIDA";
         String detalle = estado == HttpStatus.NOT_FOUND ? "La ruta solicitada no existe" : "La solicitud no es válida";
-        return ResponseEntity.status(estado).body(crear(estado, detalle, codigo, intercambio, true));
+        return ResponseEntity.status(estado).body(crear(estado, detalle, codigo, intercambio));
     }
 
     @ExceptionHandler(ExcepcionNegocio.class)
     ResponseEntity<ProblemDetail> negocio(ExcepcionNegocio excepcion, ServerWebExchange intercambio) {
-        return ResponseEntity.badRequest().body(crear(HttpStatus.BAD_REQUEST, excepcion.getMessage(), excepcion.codigo(), intercambio, true));
+        return ResponseEntity.badRequest().body(crear(HttpStatus.BAD_REQUEST, excepcion.getMessage(), excepcion.codigo(), intercambio));
     }
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ProblemDetail> interno(Exception excepcion, ServerWebExchange intercambio) {
         LOG.error("Error no controlado al atender la solicitud", excepcion);
         return ResponseEntity.internalServerError()
-                .body(crear(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error interno", "ERROR_INTERNO", intercambio, false));
+                .body(crear(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error interno", "ERROR_INTERNO", intercambio));
     }
 
     private ProblemDetail crear(HttpStatus estado, String detalle, String codigo,
-            ServerWebExchange intercambio, boolean incluirTraceId) {
+            ServerWebExchange intercambio) {
         ProblemDetail problema = ProblemDetail.forStatusAndDetail(estado, detalle);
         problema.setTitle(estado.getReasonPhrase());
         problema.setProperty("codigo", codigo);

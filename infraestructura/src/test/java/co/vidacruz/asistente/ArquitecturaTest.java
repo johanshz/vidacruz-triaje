@@ -1,5 +1,7 @@
 package co.vidacruz.asistente;
 
+import org.junit.jupiter.api.Assertions;
+
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -53,7 +55,7 @@ class ArquitecturaTest {
     private void verificarQueNoDependeDe(JavaClasses origen, JavaClasses destino) {
         Set<String> nombresDestino = destino.stream().map(clase -> clase.getName()).collect(Collectors.toSet());
         origen.forEach(clase -> clase.getDirectDependenciesFromSelf().forEach(dependencia ->
-                org.junit.jupiter.api.Assertions.assertFalse(nombresDestino.contains(dependencia.getTargetClass().getName()),
+                assertFalse(nombresDestino.contains(dependencia.getTargetClass().getName()),
                         clase.getName() + " depende de un módulo externo: " + dependencia.getTargetClass().getName())));
     }
 }
