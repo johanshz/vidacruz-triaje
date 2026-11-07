@@ -9,14 +9,17 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import co.vidacruz.triage.evento.puerto.repositorio.RepositorioOutbox;
 import co.vidacruz.triage.paciente.comando.ComandoRegistrarPaciente;
+import co.vidacruz.triage.paciente.comando.DependenciasRegistroPaciente;
 import co.vidacruz.triage.paciente.comando.FabricaPaciente;
 import co.vidacruz.triage.paciente.comando.ManejadorRegistrarPaciente;
+import co.vidacruz.triage.paciente.comando.RegistrarCambioPaciente;
 import co.vidacruz.triage.paciente.modelo.entidad.DatosRegistroPaciente;
 import co.vidacruz.triage.paciente.modelo.entidad.NivelTriage;
 import co.vidacruz.triage.paciente.modelo.entidad.Paciente;
 import co.vidacruz.triage.paciente.puerto.repositorio.ContadorClasificaciones;
 import co.vidacruz.triage.paciente.puerto.repositorio.EjecutorTransaccion;
-import co.vidacruz.triage.paciente.puerto.repositorio.RepositorioAuditoria;
+import co.vidacruz.triage.auditoria.puerto.repositorio.RepositorioAuditoria;
+import co.vidacruz.triage.auditoria.modelo.entidad.RegistroAuditoria;
 import co.vidacruz.triage.paciente.puerto.repositorio.RepositorioPaciente;
 import co.vidacruz.triage.paciente.servicio.ServicioClasificacionPaciente;
 import java.math.BigDecimal;
@@ -33,38 +36,41 @@ class ManejadorRegistrarPacienteTest {
     private final RepositorioPaciente pacientes = mock(RepositorioPaciente.class);
     private final RepositorioAuditoria auditoria = mock(RepositorioAuditoria.class);
     private final RepositorioOutbox outbox = mock(RepositorioOutbox.class);
+    private final RegistrarCambioPaciente registrarCambio = new RegistrarCambioPaciente(auditoria, outbox);
     private final AtomicInteger incrementos = new AtomicInteger();
 
     @Test void escribeLasTresPiezasYCuentaTrasElExito() {
         when(pacientes.guardar(any())).thenReturn(Mono.empty());
-        when(auditoria.registrar(any(), anyString(), any(), anyString(), any())).thenReturn(Mono.empty());
+        when(auditoria.registrar(any())).thenReturn(Mono.empty());
         when(outbox.agregar(any(), anyString())).thenReturn(Mono.empty());
-        var manejador = manejador(error -> Mono.empty());
+        var manejador = manejador();
         StepVerifier.create(manejador.ejecutar(new ComandoRegistrarPaciente(datos())))
                 .assertNext(paciente -> assertEquals(NivelTriage.NO_URGENTE, paciente.nivel())).verifyComplete();
         assertEquals(1, incrementos.get());
         InOrder orden = inOrder(pacientes, auditoria, outbox);
         orden.verify(pacientes).guardar(any(Paciente.class));
-        orden.verify(auditoria).registrar(any(Paciente.class), anyString(), any(), anyString(), any());
+        orden.verify(auditoria).registrar(any(RegistroAuditoria.class));
         orden.verify(outbox).agregar(any(), anyString());
     }
 
     @Test void falloDeOutboxPropagaYNoIncrementaMetrica() {
         when(pacientes.guardar(any())).thenReturn(Mono.empty());
-        when(auditoria.registrar(any(), anyString(), any(), anyString(), any())).thenReturn(Mono.empty());
+        when(auditoria.registrar(any())).thenReturn(Mono.empty());
         when(outbox.agregar(any(), anyString())).thenReturn(Mono.error(new IllegalStateException("fallo")));
-        StepVerifier.create(manejador(error -> Mono.empty()).ejecutar(new ComandoRegistrarPaciente(datos())))
+        StepVerifier.create(manejador().ejecutar(new ComandoRegistrarPaciente(datos())))
                 .expectError(IllegalStateException.class).verify();
         assertEquals(0, incrementos.get());
     }
 
-    private ManejadorRegistrarPaciente manejador(java.util.function.Function<Throwable, Mono<Void>> ignorado) {
+    private ManejadorRegistrarPaciente manejador() {
         EjecutorTransaccion transaccion = new EjecutorTransaccion() {
             public <T> Mono<T> ejecutar(java.util.function.Supplier<Mono<T>> trabajo) { return Mono.defer(trabajo); }
         };
         ContadorClasificaciones contador = nivel -> incrementos.incrementAndGet();
-        return new ManejadorRegistrarPaciente(new ServicioClasificacionPaciente(), new FabricaPaciente(), pacientes,
-                auditoria, outbox, transaccion, contador, Clock.fixed(Instant.parse("2026-11-06T00:00:00Z"), ZoneOffset.UTC));
+        var dependencias = new DependenciasRegistroPaciente(new ServicioClasificacionPaciente(), new FabricaPaciente(),
+                pacientes, registrarCambio, transaccion, contador,
+                Clock.fixed(Instant.parse("2026-11-06T00:00:00Z"), ZoneOffset.UTC));
+        return new ManejadorRegistrarPaciente(dependencias);
     }
 
     private DatosRegistroPaciente datos() {

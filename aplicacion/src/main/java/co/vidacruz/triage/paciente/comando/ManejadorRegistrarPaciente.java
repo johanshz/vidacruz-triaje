@@ -1,10 +1,8 @@
 package co.vidacruz.triage.paciente.comando;
 
-import co.vidacruz.triage.evento.puerto.repositorio.RepositorioOutbox;
 import co.vidacruz.triage.paciente.modelo.entidad.Paciente;
 import co.vidacruz.triage.paciente.puerto.repositorio.ContadorClasificaciones;
 import co.vidacruz.triage.paciente.puerto.repositorio.EjecutorTransaccion;
-import co.vidacruz.triage.paciente.puerto.repositorio.RepositorioAuditoria;
 import co.vidacruz.triage.paciente.puerto.repositorio.RepositorioPaciente;
 import co.vidacruz.triage.paciente.servicio.ServicioClasificacionPaciente;
 import java.time.Clock;
@@ -17,30 +15,31 @@ public class ManejadorRegistrarPaciente {
     private final ServicioClasificacionPaciente clasificacion;
     private final FabricaPaciente fabrica;
     private final RepositorioPaciente pacientes;
-    private final RepositorioAuditoria auditoria;
-    private final RepositorioOutbox outbox;
+    private final RegistrarCambioPaciente registrarCambio;
     private final EjecutorTransaccion transaccion;
     private final ContadorClasificaciones contador;
     private final Clock reloj;
 
-    public ManejadorRegistrarPaciente(ServicioClasificacionPaciente clasificacion, FabricaPaciente fabrica,
-            RepositorioPaciente pacientes, RepositorioAuditoria auditoria, RepositorioOutbox outbox,
-            EjecutorTransaccion transaccion, ContadorClasificaciones contador, Clock reloj) {
-        this.clasificacion = clasificacion; this.fabrica = fabrica; this.pacientes = pacientes;
-        this.auditoria = auditoria; this.outbox = outbox; this.transaccion = transaccion;
-        this.contador = contador; this.reloj = reloj;
+    public ManejadorRegistrarPaciente(DependenciasRegistroPaciente dependencias) {
+        this.clasificacion = dependencias.clasificacion();
+        this.fabrica = dependencias.fabrica();
+        this.pacientes = dependencias.pacientes();
+        this.registrarCambio = dependencias.registrarCambio();
+        this.transaccion = dependencias.transaccion();
+        this.contador = dependencias.contador();
+        this.reloj = dependencias.reloj();
     }
 
     public Mono<Paciente> ejecutar(ComandoRegistrarPaciente comando) {
         return Mono.defer(() -> {
+            clasificacion.validar(comando.datos());
             var nivel = clasificacion.clasificar(comando.datos());
             Instant ahora = reloj.instant().truncatedTo(ChronoUnit.MICROS);
             UUID id = UUID.randomUUID();
             Paciente paciente = fabrica.registrado(comando.datos(), nivel, id, ahora);
             var evento = fabrica.eventoRegistrado(paciente, UUID.randomUUID(), ahora);
             return transaccion.ejecutar(() -> pacientes.guardar(paciente)
-                    .then(auditoria.registrar(paciente, evento.tipo(), null, paciente.estado().name(), ahora))
-                    .then(outbox.agregar(evento, paciente.id().toString()))
+                    .then(registrarCambio.registrar(paciente, evento, null))
                     .thenReturn(paciente)).doOnSuccess(guardado -> contador.incrementar(nivel));
         });
     }

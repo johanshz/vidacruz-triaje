@@ -3,6 +3,7 @@ package co.vidacruz.triage.evento.adaptador.repositorio;
 import co.vidacruz.triage.evento.modelo.entidad.EventoOutbox;
 import co.vidacruz.triage.evento.modelo.entidad.EventoPaciente;
 import co.vidacruz.triage.evento.puerto.repositorio.RepositorioOutbox;
+import co.vidacruz.triage.evento.puerto.repositorio.CandadoPublicacion;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.r2dbc.postgresql.codec.Json;
@@ -12,7 +13,7 @@ import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
 @Repository
-public class AdaptadorR2dbcOutbox implements RepositorioOutbox {
+public class AdaptadorR2dbcOutbox implements RepositorioOutbox, CandadoPublicacion {
     private static final long CANDADO_PUBLICADOR = 2026110601L;
     private final DatabaseClient db;
     private final ObjectMapper mapper;
@@ -42,7 +43,7 @@ public class AdaptadorR2dbcOutbox implements RepositorioOutbox {
     }
 
     @Override
-    public Mono<Boolean> tomarCandadoPublicacion() {
+    public Mono<Boolean> tomar() {
         return db.sql("SELECT pg_try_advisory_xact_lock(:clave) AS adquirido").bind("clave", CANDADO_PUBLICADOR)
                 .map((fila, metadata) -> fila.get("adquirido", Boolean.class)).one();
     }

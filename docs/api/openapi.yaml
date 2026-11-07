@@ -2,18 +2,88 @@ openapi: 3.1.0
 info:
   title: API de Triage VidaCruz
   version: 1.0.0
-  summary: Endpoints transversales de salud y métricas del servicio Triage.
+  summary: Registro, consulta y cambio de estado de pacientes, salud y métricas del servicio Triage.
 servers:
   - url: http://localhost:8081
     description: Puerto publicado por Docker Compose para desarrollo local.
   - url: http://localhost:8080
     description: Puerto predeterminado de la aplicación fuera de Docker Compose.
 tags:
+  - name: Pacientes
+    description: Registro, consulta y actualización de pacientes en urgencias.
   - name: Salud
     description: Probes de liveness y readiness.
   - name: Observabilidad
     description: Información y métricas del servicio.
 paths:
+  /triage/pacientes:
+    post:
+      operationId: registrarPaciente
+      summary: Registra y clasifica un paciente
+      tags: [Pacientes]
+      security:
+        - ApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitudRegistroPaciente'
+      responses:
+        '201':
+          description: Paciente registrado y clasificado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespuestaRegistroPaciente'
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '500': { $ref: '#/components/responses/Error' }
+        default: { $ref: '#/components/responses/Error' }
+  /triage/pacientes/{id}:
+    get:
+      operationId: consultarPaciente
+      summary: Consulta la ficha y el estado actual de un paciente
+      tags: [Pacientes]
+      security:
+        - ApiKey: []
+      parameters:
+        - $ref: '#/components/parameters/IdPaciente'
+      responses:
+        '200':
+          description: Ficha del paciente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Paciente' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        default: { $ref: '#/components/responses/Error' }
+  /triage/pacientes/{id}/estado:
+    patch:
+      operationId: cambiarEstadoPaciente
+      summary: Cambia el estado de un paciente
+      tags: [Pacientes]
+      security:
+        - ApiKey: []
+      parameters:
+        - $ref: '#/components/parameters/IdPaciente'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SolicitudCambioEstado' }
+      responses:
+        '200':
+          description: Ficha del paciente después del cambio.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Paciente' }
+        '400': { $ref: '#/components/responses/Validacion' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+        default: { $ref: '#/components/responses/Error' }
   /actuator/health/liveness:
     get:
       operationId: consultarLiveness
@@ -92,6 +162,65 @@ components:
       in: header
       name: X-API-Key
   schemas:
+    SolicitudRegistroPaciente:
+      type: object
+      additionalProperties: false
+      required: [nombreCompleto, edad, frecuenciaCardiaca, presionSistolica, presionDiastolica, spo2, temperatura, dolor, gcs, quejaPrincipal]
+      properties:
+        nombreCompleto: { type: string, minLength: 3, maxLength: 100, example: 'Ana Pérez' }
+        edad: { type: integer, minimum: 0, maximum: 120, example: 35 }
+        frecuenciaCardiaca: { type: integer, minimum: 20, maximum: 250, example: 80 }
+        presionSistolica: { type: integer, minimum: 60, maximum: 260, example: 120 }
+        presionDiastolica: { type: integer, minimum: 30, maximum: 160, example: 80 }
+        spo2: { type: integer, minimum: 70, maximum: 100, example: 98 }
+        temperatura: { type: number, minimum: 34.0, maximum: 42.0, multipleOf: 0.1, example: 36.5 }
+        dolor: { type: integer, minimum: 0, maximum: 10, example: 2 }
+        gcs: { type: integer, minimum: 3, maximum: 15, example: 15 }
+        quejaPrincipal: { type: string, minLength: 1, maxLength: 500, example: 'Dolor de cabeza' }
+    RespuestaRegistroPaciente:
+      type: object
+      required: [id, nivel, slaMinutos, estado, fechaRegistro]
+      properties:
+        id: { type: string, format: uuid, example: 550e8400-e29b-41d4-a716-446655440000 }
+        nivel: { $ref: '#/components/schemas/NivelTriage' }
+        slaMinutos: { type: integer, example: 30 }
+        estado: { $ref: '#/components/schemas/EstadoPaciente' }
+        fechaRegistro: { type: string, format: date-time, example: '2026-11-08T10:00:00Z' }
+    SolicitudCambioEstado:
+      type: object
+      required: [estado]
+      properties:
+        estado: { $ref: '#/components/schemas/EstadoPaciente' }
+      additionalProperties: false
+    Paciente:
+      type: object
+      required: [id, nombreCompleto, edad, frecuenciaCardiaca, presionSistolica, presionDiastolica, spo2, temperatura, dolor, gcs, quejaPrincipal, nivel, slaMinutos, estado, escalado, fechaRegistro, fechaEstado, fechaPrimeraConsulta, tiempoEnEstadoActualMinutos]
+      properties:
+        id: { type: string, format: uuid }
+        nombreCompleto: { type: string }
+        edad: { type: integer }
+        frecuenciaCardiaca: { type: integer }
+        presionSistolica: { type: integer }
+        presionDiastolica: { type: integer }
+        spo2: { type: integer }
+        temperatura: { type: number }
+        dolor: { type: integer }
+        gcs: { type: integer }
+        quejaPrincipal: { type: string }
+        nivel: { $ref: '#/components/schemas/NivelTriage' }
+        slaMinutos: { type: integer }
+        estado: { $ref: '#/components/schemas/EstadoPaciente' }
+        escalado: { type: boolean }
+        fechaRegistro: { type: string, format: date-time }
+        fechaEstado: { type: string, format: date-time }
+        fechaPrimeraConsulta: { type: [string, 'null'], format: date-time }
+        tiempoEnEstadoActualMinutos: { type: integer, minimum: 0 }
+    NivelTriage:
+      type: string
+      enum: [CRITICO, URGENTE, URGENTE_2, NO_URGENTE, NO_URGENTE_2]
+    EstadoPaciente:
+      type: string
+      enum: [REGISTRADO, EN_CONSULTA, ALTA]
     EstadoSalud:
       type: object
       required: [status]
@@ -131,3 +260,26 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problema'
+    Validacion:
+      description: Solicitud inválida o campo fuera de las reglas del contrato.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    NoEncontrado:
+      description: El paciente no existe.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+    Conflicto:
+      description: La transición solicitada no está permitida.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problema' }
+  parameters:
+    IdPaciente:
+      name: id
+      in: path
+      required: true
+      description: UUID del paciente.
+      schema: { type: string, format: uuid }
+      example: 550e8400-e29b-41d4-a716-446655440000

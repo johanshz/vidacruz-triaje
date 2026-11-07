@@ -1,4 +1,4 @@
-﻿# Triage
+# Triage
 
 Microservicio reactivo de triaje de VidaCruz. Registra, clasifica y consulta pacientes, cambia su estado y publica eventos confirmados mediante el outbox.
 
@@ -49,4 +49,4 @@ docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-s
 
 ## Configuración
 
-`KAFKA_BOOTSTRAP_SERVERS` apunta a `kafka:19092` dentro de Compose o a `localhost:9092` al ejecutar la aplicación fuera de Docker. `OUTBOX_INTERVAL` y `OUTBOX_BATCH_SIZE` controlan el intervalo y tamaño del lote (por defecto `PT1S` y `100`). Kafka no forma parte de readiness. Si el broker está caído al arranque, Triage inicia y conserva los eventos en PostgreSQL.
+`KAFKA_BOOTSTRAP_SERVERS` apunta a `kafka:19092` dentro de Compose o a `localhost:9092` al ejecutar la aplicación fuera de Docker. `VIDACRUZ_OUTBOX_INTERVALO` y `VIDACRUZ_OUTBOX_LOTE` controlan el intervalo y tamaño del lote (por defecto `PT1S` y `100`). `VIDACRUZ_OUTBOX_TIMEOUT_ENVIO` limita el tiempo de cada envío a Kafka (por defecto `PT10S`). Kafka no forma parte de readiness. Si el broker está caído al arranque, Triage inicia y conserva los eventos en PostgreSQL.

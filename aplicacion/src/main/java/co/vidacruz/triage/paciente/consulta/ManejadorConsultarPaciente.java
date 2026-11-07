@@ -1,6 +1,6 @@
 package co.vidacruz.triage.paciente.consulta;
 
-import co.vidacruz.triage.comun.excepcion.ExcepcionRecursoNoEncontrado;
+import co.vidacruz.triage.paciente.excepcion.ExcepcionPacienteNoEncontrado;
 import co.vidacruz.triage.paciente.modelo.dto.DtoPaciente;
 import co.vidacruz.triage.paciente.puerto.dao.DaoPaciente;
 import java.time.Clock;
@@ -17,6 +17,6 @@ public class ManejadorConsultarPaciente {
 
     public Mono<DtoPaciente> ejecutar(UUID id) {
         return dao.consultar(id, reloj.instant())
-                .switchIfEmpty(Mono.error(new ExcepcionRecursoNoEncontrado("No existe el paciente " + id)));
+                .switchIfEmpty(Mono.error(new ExcepcionPacienteNoEncontrado()));
     }
 }

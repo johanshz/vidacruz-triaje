@@ -25,6 +25,9 @@ spring:
       acks: all
       properties:
         enable.idempotence: true
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 5000
+        max.block.ms: 5000
 management:
   tracing:
     sampling:
@@ -60,5 +63,6 @@ vidacruz:
   seguridad:
     api-key: ${TRIAGE_API_KEY}
   outbox:
-    intervalo: ${OUTBOX_INTERVAL:PT1S}
-    lote: ${OUTBOX_BATCH_SIZE:100}
+    intervalo: ${VIDACRUZ_OUTBOX_INTERVALO:PT1S}
+    lote: ${VIDACRUZ_OUTBOX_LOTE:100}
+    timeout-envio: ${VIDACRUZ_OUTBOX_TIMEOUT_ENVIO:PT10S}

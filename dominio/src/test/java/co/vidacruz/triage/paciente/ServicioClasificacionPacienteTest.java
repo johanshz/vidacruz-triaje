@@ -26,6 +26,55 @@ class ServicioClasificacionPacienteTest {
         assertNivel(NivelTriage.CRITICO, datos(130, 180, 110, 91, "39.0", 9, 8, "Dolor"));
     }
 
+    @Test void clasificaTodosLosBordesClinicosYDaPrioridadAlNivelMasGrave() {
+        Object[][] casos = {
+                {39, 120, 80, 99, "36.5", 2, 15, NivelTriage.CRITICO},
+                {40, 120, 80, 99, "36.5", 2, 15, NivelTriage.NO_URGENTE},
+                {89, 120, 80, 99, "36.5", 2, 15, NivelTriage.NO_URGENTE},
+                {90, 120, 80, 99, "36.5", 2, 15, NivelTriage.URGENTE_2},
+                {120, 120, 80, 99, "36.5", 2, 15, NivelTriage.URGENTE_2},
+                {121, 120, 80, 99, "36.5", 2, 15, NivelTriage.CRITICO},
+                {72, 120, 80, 89, "36.5", 2, 15, NivelTriage.CRITICO},
+                {72, 120, 80, 90, "36.5", 2, 15, NivelTriage.URGENTE},
+                {72, 120, 80, 93, "36.5", 2, 15, NivelTriage.URGENTE},
+                {72, 120, 80, 94, "36.5", 2, 15, NivelTriage.NO_URGENTE},
+                {72, 89, 80, 99, "36.5", 2, 15, NivelTriage.CRITICO},
+                {72, 90, 80, 99, "36.5", 2, 15, NivelTriage.URGENTE},
+                {72, 100, 80, 99, "36.5", 2, 15, NivelTriage.URGENTE},
+                {72, 101, 80, 99, "36.5", 2, 15, NivelTriage.NO_URGENTE},
+                {72, 120, 80, 99, "37.9", 2, 15, NivelTriage.NO_URGENTE},
+                {72, 120, 80, 99, "38.0", 2, 15, NivelTriage.URGENTE_2},
+                {72, 120, 80, 99, "38.4", 2, 15, NivelTriage.URGENTE_2},
+                {72, 120, 80, 99, "38.5", 2, 15, NivelTriage.URGENTE},
+                {72, 120, 80, 99, "36.5", 2, 8, NivelTriage.CRITICO},
+                {72, 120, 80, 99, "36.5", 2, 9, NivelTriage.URGENTE},
+                {72, 120, 80, 99, "36.5", 2, 13, NivelTriage.URGENTE},
+                {72, 120, 80, 99, "36.5", 2, 14, NivelTriage.NO_URGENTE}
+        };
+
+        for (Object[] caso : casos) {
+            var entrada = datos((int) caso[0], (int) caso[1], (int) caso[2], (int) caso[3],
+                    (String) caso[4], (int) caso[5], (int) caso[6], "Consulta");
+            assertNivel((NivelTriage) caso[7], entrada);
+        }
+
+        assertNivel(NivelTriage.URGENTE, datos(95, 150, 95, 91, "38.0", 4, 15, "Consulta"));
+        assertNivel(NivelTriage.CRITICO, datos(130, 180, 110, 97, "38.5", 8, 15, "Consulta"));
+        assertNivel(NivelTriage.URGENTE_2, datos(72, 120, 80, 99, "36.5", 7, 15, "Consulta"));
+        assertNivel(NivelTriage.NO_URGENTE, datos(72, 120, 80, 99, "36.5", 6, 15, "Consulta"));
+    }
+
+    @Test void clasificaQuejasAdministrativasPorIgualdadNormalizada() {
+        for (String queja : java.util.List.of("documentos", "Recolección de resultados", "RENOVACIÓN  de   recetario ",
+                "vacunación", " seguimiento ")) {
+            assertNivel(NivelTriage.NO_URGENTE_2, datos(72, 120, 80, 99, "36.5", 2, 15, queja));
+        }
+        assertNivel(NivelTriage.NO_URGENTE, datos(72, 120, 80, 99, "36.5", 2, 15,
+                "Renovación de recetario urgente"));
+        assertNivel(NivelTriage.URGENTE_2, datos(90, 120, 80, 99, "36.5", 2, 15, "Vacunación"));
+        assertEquals(120, NivelTriage.NO_URGENTE_2.slaMinutos());
+    }
+
     private void assertNivel(NivelTriage esperado, DatosRegistroPaciente datos) {
         StepVerifier.create(Mono.fromCallable(() -> servicio.clasificar(datos)))
                 .assertNext(nivel -> assertEquals(esperado, nivel)).verifyComplete();

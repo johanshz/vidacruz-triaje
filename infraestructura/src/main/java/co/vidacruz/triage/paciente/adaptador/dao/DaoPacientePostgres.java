@@ -16,7 +16,15 @@ public class DaoPacientePostgres implements DaoPaciente {
 
     @Override
     public Mono<DtoPaciente> consultar(UUID id, Instant ahora) {
-        return db.sql("SELECT id,nombre_completo,edad,frecuencia_cardiaca,presion_sistolica,presion_diastolica,spo2,temperatura,dolor,gcs,queja_principal,nivel,sla_minutos,estado,escalado,fecha_registro,fecha_estado,fecha_primera_consulta FROM paciente WHERE id=:id")
+        String consulta = """
+                SELECT id, nombre_completo, edad, frecuencia_cardiaca, presion_sistolica,
+                       presion_diastolica, spo2, temperatura, dolor, gcs, queja_principal,
+                       nivel, sla_minutos, estado, escalado, fecha_registro, fecha_estado,
+                       fecha_primera_consulta
+                FROM paciente
+                WHERE id = :id
+                """;
+        return db.sql(consulta)
                 .bind("id", id).map((fila, metadata) -> mapeo.mapear(fila, ahora)).one();
     }
 }

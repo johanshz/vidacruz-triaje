@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import co.vidacruz.triage.evento.comando.ManejadorPublicarOutbox;
 import java.time.Duration;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -14,6 +15,7 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.r2dbc.core.DatabaseClient;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 import reactor.test.StepVerifier;
@@ -30,21 +32,26 @@ class PublicacionKafkaIntegracionTest extends PruebaIntegracionPostgres {
                         "--DB_USER=" + POSTGRES.getUsername(), "--DB_PASSWORD=" + POSTGRES.getPassword(),
                         "--TRIAGE_API_KEY=clave-prueba", "--KAFKA_BOOTSTRAP_SERVERS=" + KAFKA.getBootstrapServers(),
                         "--spring.kafka.bootstrap-servers=" + KAFKA.getBootstrapServers(),
+                        "--spring.kafka.producer.bootstrap-servers=" + KAFKA.getBootstrapServers(),
                         "--vidacruz.outbox.intervalo=PT1H", "--vidacruz.outbox.retraso-inicial=PT1H")) {
+            assertThat(contexto.getEnvironment().getProperty("spring.kafka.bootstrap-servers"))
+                    .isEqualTo(KAFKA.getBootstrapServers());
             try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", KAFKA.getBootstrapServers()))) {
                 var tema = admin.describeTopics(java.util.List.of("triaje.eventos")).allTopicNames().get();
                 assertThat(tema.get("triaje.eventos").partitions()).hasSize(3);
             }
             DatabaseClient db = contexto.getBean(DatabaseClient.class);
             ManejadorPublicarOutbox publicador = contexto.getBean(ManejadorPublicarOutbox.class);
-            UUID paciente = UUID.randomUUID();
-            UUID evento = UUID.randomUUID();
-            String carga = "{\"idEvento\":\"" + evento + "\",\"tipo\":\"paciente_registrado\",\"version\":1,\"ocurridoEn\":\"2026-11-06T00:00:00Z\",\"datos\":{\"idPaciente\":\"" + paciente + "\",\"nivel\":\"URGENTE\",\"estadoAnterior\":null,\"estadoNuevo\":\"REGISTRADO\",\"escalado\":false}}";
+            UUID primerPaciente = UUID.randomUUID();
+            UUID segundoPaciente = UUID.randomUUID();
+            UUID idRegistro = UUID.randomUUID();
+            UUID idConsulta = UUID.randomUUID();
+            UUID idAlta = UUID.randomUUID();
             StepVerifier.create(db.sql("UPDATE outbox SET enviado_en=now() WHERE enviado_en IS NULL")
-                    .fetch().rowsUpdated()).expectNextCount(1).verifyComplete();
-            StepVerifier.create(db.sql("INSERT INTO outbox (id,tipo,llave,carga) VALUES (:id,'paciente_registrado',:llave,CAST(:carga AS jsonb))")
-                    .bind("id", evento).bind("llave", paciente.toString()).bind("carga", carga).fetch().rowsUpdated())
-                    .expectNext(1L).verifyComplete();
+                    .fetch().rowsUpdated()).expectNextMatches(actualizadas -> actualizadas >= 0).verifyComplete();
+            insertarEvento(db, idRegistro, primerPaciente, "paciente_registrado", null, "REGISTRADO");
+            insertarEvento(db, idConsulta, primerPaciente, "paciente_en_consulta", "REGISTRADO", "EN_CONSULTA");
+            insertarEvento(db, idAlta, segundoPaciente, "paciente_registrado", null, "REGISTRADO");
             StepVerifier.create(publicador.ejecutar()).verifyComplete();
             StepVerifier.create(publicador.ejecutar()).verifyComplete();
 
@@ -57,21 +64,47 @@ class PublicacionKafkaIntegracionTest extends PruebaIntegracionPostgres {
             try (KafkaConsumer<String, String> consumidor = new KafkaConsumer<>(propiedadesConsumidor)) {
                 consumidor.subscribe(java.util.List.of("triaje.eventos"));
                 var vence = System.nanoTime() + Duration.ofSeconds(20).toNanos();
-                int coincidencias = 0;
+                var idsRecibidos = new java.util.ArrayList<String>();
+                var sobres = new java.util.HashMap<String, com.fasterxml.jackson.databind.JsonNode>();
                 while (System.nanoTime() < vence) {
-                    for (var registro : consumidor.poll(Duration.ofMillis(250)).records("triaje.eventos")) {
-                        var sobre = new com.fasterxml.jackson.databind.ObjectMapper().readTree(registro.value());
-                        if (registro.key().equals(paciente.toString())
-                                && sobre.path("idEvento").asText().equals(evento.toString())
-                                && sobre.path("tipo").asText().equals("paciente_registrado")
-                                && sobre.path("version").asInt() == 1
-                                && sobre.path("datos").path("idPaciente").asText().equals(paciente.toString())) coincidencias++;
+                    for (var mensaje : consumidor.poll(Duration.ofMillis(250)).records("triaje.eventos")) {
+                        var sobre = new com.fasterxml.jackson.databind.ObjectMapper().readTree(mensaje.value());
+                        String idEvento = sobre.path("idEvento").asText();
+                        if (List.of(idRegistro.toString(), idConsulta.toString(), idAlta.toString()).contains(idEvento)) {
+                            assertThat(mensaje.key()).isEqualTo(sobre.path("datos").path("idPaciente").asText());
+                            idsRecibidos.add(idEvento);
+                            sobres.put(idEvento, sobre);
+                        }
                     }
                 }
-                assertThat(coincidencias).isEqualTo(1);
+                assertThat(idsRecibidos).containsExactlyInAnyOrder(idRegistro.toString(), idConsulta.toString(), idAlta.toString());
+                assertThat(idsRecibidos.indexOf(idRegistro.toString())).isLessThan(idsRecibidos.indexOf(idConsulta.toString()));
+                assertThat(sobres.get(idRegistro.toString()).path("tipo").asText()).isEqualTo("paciente_registrado");
+                assertThat(sobres.get(idConsulta.toString()).path("tipo").asText()).isEqualTo("paciente_en_consulta");
+                assertThat(sobres.get(idAlta.toString()).path("tipo").asText()).isEqualTo("paciente_registrado");
+                assertThat(sobres.get(idRegistro.toString()).path("version").asInt()).isEqualTo(1);
+                assertThat(sobres.get(idRegistro.toString()).path("ocurridoEn").asText()).matches(".*Z$");
+                assertThat(sobres.get(idConsulta.toString()).path("datos").path("escalado").asBoolean()).isFalse();
+                assertThat(sobres.get(idConsulta.toString()).path("datos").path("estadoAnterior").asText()).isEqualTo("REGISTRADO");
+                assertThat(sobres.get(idConsulta.toString()).path("datos").path("estadoNuevo").asText()).isEqualTo("EN_CONSULTA");
+                assertThat(sobres.get(idAlta.toString()).path("datos").path("estadoAnterior").isNull()).isTrue();
             }
-            StepVerifier.create(db.sql("SELECT enviado_en IS NOT NULL AS enviado FROM outbox WHERE id=:id").bind("id", evento)
-                    .map((row, metadata) -> row.get("enviado", Boolean.class)).one()).expectNext(true).verifyComplete();
+            StepVerifier.create(db.sql("SELECT COUNT(*) AS enviados FROM outbox WHERE id IN (:registro,:consulta,:alta) AND enviado_en IS NOT NULL")
+                    .bind("registro", idRegistro).bind("consulta", idConsulta).bind("alta", idAlta)
+                    .map((row, metadata) -> row.get("enviados", Long.class)).one()).expectNext(3L).verifyComplete();
+            assertThat(contexto.getBean(MeterRegistry.class).get("triaje.outbox.pendientes").gauge().value()).isZero();
         }
+    }
+
+    private void insertarEvento(DatabaseClient db, UUID id, UUID paciente, String tipo,
+            String estadoAnterior, String estadoNuevo) {
+        String anterior = estadoAnterior == null ? "null" : "\"" + estadoAnterior + "\"";
+        String carga = "{\"idEvento\":\"" + id + "\",\"tipo\":\"" + tipo + "\",\"version\":1,"
+                + "\"ocurridoEn\":\"2026-11-06T00:00:00Z\",\"datos\":{\"idPaciente\":\"" + paciente
+                + "\",\"nivel\":\"URGENTE\",\"estadoAnterior\":" + anterior + ",\"estadoNuevo\":\""
+                + estadoNuevo + "\",\"escalado\":false}}";
+        StepVerifier.create(db.sql("INSERT INTO outbox (id,tipo,llave,carga) VALUES (:id,:tipo,:llave,CAST(:carga AS jsonb))")
+                .bind("id", id).bind("tipo", tipo).bind("llave", paciente.toString()).bind("carga", carga)
+                .fetch().rowsUpdated()).expectNext(1L).verifyComplete();
     }
 }

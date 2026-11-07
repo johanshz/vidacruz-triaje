@@ -9,9 +9,11 @@ import org.apache.kafka.clients.admin.NewTopic;
 
 @Configuration
 public class ConfiguracionKafka {
+    public static final String TOPIC_EVENTOS = "triaje.eventos";
+
     @Bean
     NewTopic topicEventosTriage() {
-        return TopicBuilder.name("triaje.eventos").partitions(3).replicas(1).build();
+        return TopicBuilder.name(TOPIC_EVENTOS).partitions(3).replicas(1).build();
     }
 
     @Bean

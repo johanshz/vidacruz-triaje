@@ -4,7 +4,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record EventoPaciente(UUID idEvento, String tipo, int version, Instant ocurridoEn, DatosEventoPaciente datos) {
+    public static final int VERSION_ACTUAL = 1;
+
     public EventoPaciente {
-        if (version != 1) throw new IllegalArgumentException("La versión del evento debe ser 1");
+        if (version != VERSION_ACTUAL) throw new IllegalArgumentException("La versión del evento debe ser " + VERSION_ACTUAL);
     }
 }

@@ -25,5 +25,7 @@ abstract class PruebaIntegracionPostgres {
         registry.add("DB_PASSWORD", POSTGRES::getPassword);
         registry.add("TRIAGE_API_KEY", () -> "clave-prueba");
         registry.add("SERVER_PORT", () -> "0");
+        registry.add("vidacruz.outbox.intervalo", () -> "PT1H");
+        registry.add("vidacruz.outbox.retraso-inicial", () -> "PT1H");
     }
 }
