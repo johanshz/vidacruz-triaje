@@ -8,14 +8,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.springframework.test.annotation.DirtiesContext;
 
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
 @AutoConfigureObservability
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ReadinessIntegracionTest extends PruebaIntegracionPostgres {
 
     @Autowired
@@ -28,5 +26,6 @@ class ReadinessIntegracionTest extends PruebaIntegracionPostgres {
         webTestClient.get().uri("/actuator/health/readiness").exchange()
             .expectStatus().isEqualTo(503)
             .expectBody().jsonPath("$.status").isEqualTo("DOWN");
+        POSTGRES.start();
     }
 }

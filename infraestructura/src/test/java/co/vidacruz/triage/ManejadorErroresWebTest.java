@@ -10,12 +10,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.server.ResponseStatusException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import reactor.test.StepVerifier;
 
 class ManejadorErroresWebTest {
 
-    private final ManejadorErroresWeb manejador = new ManejadorErroresWeb(
-        new FabricaProblemDetail(new ObjectMapper()));
+    private final ManejadorErroresWeb manejador = new ManejadorErroresWeb(new FabricaProblemDetail(),
+        new co.vidacruz.triage.infraestructura.error.EscritorProblemDetail(new ObjectMapper()),
+        new co.vidacruz.triage.infraestructura.error.TraductorErrorHttp());
 
     @Test
     void traduce404405YErroresNoControlados() {
@@ -37,6 +40,30 @@ class ManejadorErroresWebTest {
         StepVerifier.create(manejador.handle(exchange, fallo))
             .expectErrorMatches(error -> error == fallo)
             .verify();
+    }
+
+    @Test
+    void responseStatusSinReasonConservaDetalleNoNulo() {
+        var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/").build());
+        StepVerifier.create(manejador.handle(exchange, new ResponseStatusException(HttpStatus.BAD_REQUEST))).verifyComplete();
+        StepVerifier.create(exchange.getResponse().getBodyAsString())
+            .assertNext(cuerpo -> assertThat(cuerpo).contains("\"detail\":\"La solicitud no se pudo procesar\""))
+            .verifyComplete();
+    }
+
+    @Test
+    void errorDeSerializacionSePropaga() {
+        ObjectMapper mapper = new ObjectMapper() {
+            @Override public byte[] writeValueAsBytes(Object value) throws JsonProcessingException {
+                throw new JsonProcessingException("fallo de serialización") { };
+            }
+        };
+        var escritor = new co.vidacruz.triage.infraestructura.error.EscritorProblemDetail(mapper);
+        var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/").build());
+        var problem = new FabricaProblemDetail().crear(exchange,
+            co.vidacruz.triage.infraestructura.error.TraductorErrorHttp.ErrorHttp.interno());
+        StepVerifier.create(escritor.escribir(exchange, problem))
+            .expectError(JsonProcessingException.class).verify();
     }
 
     private void verificarRespuesta(Throwable error, HttpStatus status, String codigo) {

@@ -1,15 +1,16 @@
 package co.vidacruz.triage.comun.excepcion;
 
-public abstract class ExcepcionNegocio extends RuntimeException {
+public abstract sealed class ExcepcionNegocio extends RuntimeException
+    permits ExcepcionValidacion, ExcepcionRecursoNoEncontrado, ExcepcionConflicto {
 
-    private final String codigo;
+    private final CodigoError codigo;
 
-    protected ExcepcionNegocio(String codigo, String mensaje) {
+    protected ExcepcionNegocio(CodigoError codigo, String mensaje) {
         super(mensaje);
         this.codigo = codigo;
     }
 
-    public String codigo() {
+    public CodigoError codigo() {
         return codigo;
     }
 }

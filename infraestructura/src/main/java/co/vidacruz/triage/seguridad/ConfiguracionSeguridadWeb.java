@@ -1,6 +1,5 @@
 package co.vidacruz.triage.seguridad;
 
-import co.vidacruz.triage.infraestructura.error.EntradaAutenticacionApiKey;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +23,7 @@ public class ConfiguracionSeguridadWeb {
                                              GestorAutenticacionApiKey gestor,
                                              EntradaAutenticacionApiKey entrada) {
         AuthenticationWebFilter filtroApiKey = new AuthenticationWebFilter(gestor);
-        filtroApiKey.setServerAuthenticationConverter(gestor);
+        filtroApiKey.setServerAuthenticationConverter(new ConvertidorApiKey());
         filtroApiKey.setAuthenticationFailureHandler(new ServerAuthenticationEntryPointFailureHandler(entrada));
 
         return http.csrf(ServerHttpSecurity.CsrfSpec::disable)

@@ -2,7 +2,6 @@ package co.vidacruz.triage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import co.vidacruz.triage.infraestructura.error.FabricaProblemDetail;
 import co.vidacruz.triage.infraestructura.error.ManejadorGlobalErrores;
 import org.junit.jupiter.api.Test;
@@ -15,7 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 class ManejadorGlobalErroresTest {
 
     private final ManejadorGlobalErrores manejador = new ManejadorGlobalErrores(
-        new FabricaProblemDetail(new ObjectMapper()));
+        new FabricaProblemDetail(), new co.vidacruz.triage.infraestructura.error.TraductorErrorHttp());
 
     @Test
     void traduceErroresHttpAProblemDetail() {

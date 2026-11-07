@@ -5,7 +5,7 @@ public final class ExcepcionValidacion extends ExcepcionNegocio {
     private final String campo;
 
     public ExcepcionValidacion(String campo, String mensaje) {
-        super("VALIDACION", mensaje);
+        super(CodigoError.VALIDACION, mensaje);
         this.campo = campo;
     }
 

@@ -1,0 +1,133 @@
+openapi: 3.1.0
+info:
+  title: API de Triage VidaCruz
+  version: 1.0.0
+  summary: Endpoints transversales de salud y métricas del servicio Triage.
+servers:
+  - url: http://localhost:8081
+    description: Puerto publicado por Docker Compose para desarrollo local.
+  - url: http://localhost:8080
+    description: Puerto predeterminado de la aplicación fuera de Docker Compose.
+tags:
+  - name: Salud
+    description: Probes de liveness y readiness.
+  - name: Observabilidad
+    description: Información y métricas del servicio.
+paths:
+  /actuator/health/liveness:
+    get:
+      operationId: consultarLiveness
+      summary: Consulta la salud de liveness
+      tags: [Salud]
+      responses:
+        '200':
+          description: La aplicación está viva.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: '#/components/schemas/EstadoSalud'
+        default:
+          $ref: '#/components/responses/Error'
+  /actuator/health/readiness:
+    get:
+      operationId: consultarReadiness
+      summary: Consulta la disponibilidad para recibir tráfico
+      tags: [Salud]
+      responses:
+        '200':
+          description: La aplicación y la base de datos están disponibles.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: '#/components/schemas/EstadoSalud'
+        '503':
+          description: La aplicación no está lista, por ejemplo, porque R2DBC no responde.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: '#/components/schemas/EstadoSalud'
+        default:
+          $ref: '#/components/responses/Error'
+  /actuator/info:
+    get:
+      operationId: consultarInformacion
+      summary: Consulta la información del servicio
+      tags: [Observabilidad]
+      security:
+        - ApiKey: []
+      responses:
+        '200':
+          description: Información expuesta por el endpoint Actuator.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/NoAutorizado'
+        default:
+          $ref: '#/components/responses/Error'
+  /actuator/prometheus:
+    get:
+      operationId: consultarMetricasPrometheus
+      summary: Consulta las métricas Prometheus
+      tags: [Observabilidad]
+      security:
+        - ApiKey: []
+      responses:
+        '200':
+          description: Métricas en formato Prometheus.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/NoAutorizado'
+        default:
+          $ref: '#/components/responses/Error'
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    EstadoSalud:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN, OUT_OF_SERVICE, UNKNOWN]
+    Problema:
+      type: object
+      properties:
+        type:
+          type: [string, 'null']
+        title:
+          type: [string, 'null']
+        status:
+          type: integer
+        detail:
+          type: [string, 'null']
+        instance:
+          type: [string, 'null']
+        codigo:
+          type: [string, 'null']
+        campo:
+          type: [string, 'null']
+        traceId:
+          type: [string, 'null']
+  responses:
+    NoAutorizado:
+      description: Falta una API key válida.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+    Error:
+      description: Error HTTP.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'

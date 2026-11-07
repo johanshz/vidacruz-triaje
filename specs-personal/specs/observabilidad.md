@@ -31,4 +31,4 @@ Actuator expone health, info y prometheus; liveness evalÃºa el estado de vida,
 - **THEN** la respuesta no expone detalles internos
 
 
-El filtro obtiene el identificador del span actual al suscribirse a la cadena reactiva, con Reactor Context disponible. Solo genera un UUID de respaldo cuando no encuentra un span.
+El filtro obtiene el identificador del span actual al suscribirse a la cadena reactiva, con Reactor Context disponible. No genera un UUID de respaldo cuando no encuentra un span.
