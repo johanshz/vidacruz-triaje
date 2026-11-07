@@ -49,4 +49,32 @@ docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-s
 
 ## Configuración
 
+`VIDACRUZ_SLA_MINUTOS_CRITICO`, `VIDACRUZ_SLA_MINUTOS_URGENTE`, `VIDACRUZ_SLA_MINUTOS_URGENTE_2`, `VIDACRUZ_SLA_MINUTOS_NO_URGENTE` y `VIDACRUZ_SLA_MINUTOS_NO_URGENTE_2` configuran los SLA en minutos (por defecto 5, 10, 30, 60 y 120). Cada valor debe ser un entero mayor que cero y aplica a pacientes nuevos. `VIDACRUZ_VIGILANCIA_INTERVALO` establece cada cuánto se revisan vencimientos (por defecto `PT30S`). `VIDACRUZ_INSTANCIA` identifica el grupo de alertas de la réplica; si queda vacío se genera un UUID al arrancar. `VIDACRUZ_REPORTE_ZONA_HORARIA` determina la zona del reporte (por defecto `America/Bogota`); un identificador inválido impide el arranque.
+
+## Cómo probar escalamiento, alertas y reporte
+
+Para probar sin esperar el SLA normal, cambia en `.env` `VIDACRUZ_SLA_MINUTOS_CRITICO=1` y `VIDACRUZ_VIGILANCIA_INTERVALO=PT5S`. Reinicia el servicio para que lea las propiedades. Los nuevos registros críticos se escalan cuando cumplen ese SLA; los que ya estaban registrados conservan el SLA guardado.
+
+```bash
+docker compose up --build -d
+curl -i -H "X-API-Key: $TRIAGE_API_KEY" -H 'Content-Type: application/json' -d '{"nombreCompleto":"Prueba SLA","edad":40,"frecuenciaCardiaca":130,"presionSistolica":180,"presionDiastolica":110,"spo2":97,"temperatura":36.8,"dolor":8,"gcs":15,"quejaPrincipal":"Dolor torácico"}' http://localhost:8081/triage/pacientes
+```
+
+Abre el flujo de alertas con `curl -N`; las alertas de escalamiento llegan como eventos SSE llamados `alerta`:
+
+```bash
+curl -N -H "X-API-Key: $TRIAGE_API_KEY" http://localhost:8081/triage/alertas/flujo
+```
+
+El reporte usa `desde` inclusivo y `hasta` exclusivo en ISO 8601 con `Z` u offset. El rango no puede superar 31 días. Cada hora incluye `totalRegistrados`, `acumuladoRegistrados`, `porNivel` y los tiempos de espera:
+
+```bash
+curl --get -H "X-API-Key: $TRIAGE_API_KEY" \
+  --data-urlencode 'desde=2026-11-08T00:00:00-05:00' \
+  --data-urlencode 'hasta=2026-11-09T00:00:00-05:00' \
+  http://localhost:8081/triage/reportes/operacion
+```
+
+La API key se envía en `X-API-Key`. La interfaz nativa `EventSource` del navegador no permite agregar esa cabecera y el servicio no admite claves por query string; usa `curl -N` o `WebTestClient` para esta prueba.
+
 `KAFKA_BOOTSTRAP_SERVERS` apunta a `kafka:19092` dentro de Compose o a `localhost:9092` al ejecutar la aplicación fuera de Docker. `VIDACRUZ_OUTBOX_INTERVALO` y `VIDACRUZ_OUTBOX_LOTE` controlan el intervalo y tamaño del lote (por defecto `PT1S` y `100`). `VIDACRUZ_OUTBOX_TIMEOUT_ENVIO` limita el tiempo de cada envío a Kafka (por defecto `PT10S`). Kafka no forma parte de readiness. Si el broker está caído al arranque, Triage inicia y conserva los eventos en PostgreSQL.

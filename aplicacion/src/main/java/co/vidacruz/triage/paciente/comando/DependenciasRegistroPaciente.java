@@ -4,8 +4,9 @@ import co.vidacruz.triage.paciente.puerto.repositorio.ContadorClasificaciones;
 import co.vidacruz.triage.paciente.puerto.repositorio.EjecutorTransaccion;
 import co.vidacruz.triage.paciente.puerto.repositorio.RepositorioPaciente;
 import co.vidacruz.triage.paciente.servicio.ServicioClasificacionPaciente;
+import co.vidacruz.triage.paciente.modelo.entidad.ConfiguracionSla;
 import java.time.Clock;
 
 public record DependenciasRegistroPaciente(ServicioClasificacionPaciente clasificacion, FabricaPaciente fabrica,
         RepositorioPaciente pacientes, RegistrarCambioPaciente registrarCambio, EjecutorTransaccion transaccion,
-        ContadorClasificaciones contador, Clock reloj) { }
+        ContadorClasificaciones contador, Clock reloj, ConfiguracionSla configuracionSla) { }

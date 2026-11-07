@@ -10,6 +10,7 @@ import org.apache.kafka.clients.admin.NewTopic;
 @Configuration
 public class ConfiguracionKafka {
     public static final String TOPIC_EVENTOS = "triaje.eventos";
+    public static final String TOPIC_EVENTOS_DLT = "triaje.eventos.DLT";
 
     @Bean
     NewTopic topicEventosTriage() {

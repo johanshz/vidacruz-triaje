@@ -22,7 +22,6 @@ class ServicioClasificacionPacienteTest {
     }
 
     @Test void prevaleceLaGravedadYRespetaSla() {
-        assertEquals(5, NivelTriage.CRITICO.slaMinutos());
         assertNivel(NivelTriage.CRITICO, datos(130, 180, 110, 91, "39.0", 9, 8, "Dolor"));
     }
 
@@ -72,7 +71,6 @@ class ServicioClasificacionPacienteTest {
         assertNivel(NivelTriage.NO_URGENTE, datos(72, 120, 80, 99, "36.5", 2, 15,
                 "Renovación de recetario urgente"));
         assertNivel(NivelTriage.URGENTE_2, datos(90, 120, 80, 99, "36.5", 2, 15, "Vacunación"));
-        assertEquals(120, NivelTriage.NO_URGENTE_2.slaMinutos());
     }
 
     private void assertNivel(NivelTriage esperado, DatosRegistroPaciente datos) {

@@ -15,12 +15,17 @@ import co.vidacruz.triage.auditoria.puerto.repositorio.RepositorioAuditoria;
 import co.vidacruz.triage.auditoria.modelo.entidad.RegistroAuditoria;
 import co.vidacruz.triage.paciente.puerto.repositorio.RepositorioPaciente;
 import co.vidacruz.triage.paciente.servicio.ServicioClasificacionPaciente;
+import co.vidacruz.triage.paciente.modelo.entidad.ConfiguracionSla;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class ConfiguracionCasosUsoPaciente {
+    @Bean ConfiguracionSla configuracionSla(PropiedadesSla propiedades) {
+        return new ConfiguracionSla(propiedades.critico(), propiedades.urgente(), propiedades.urgente2(),
+                propiedades.noUrgente(), propiedades.noUrgente2());
+    }
     @Bean Clock relojTriage() { return Clock.systemUTC(); }
     @Bean ServicioClasificacionPaciente servicioClasificacionPaciente() { return new ServicioClasificacionPaciente(); }
     @Bean FabricaPaciente fabricaPaciente() { return new FabricaPaciente(); }
@@ -32,9 +37,10 @@ public class ConfiguracionCasosUsoPaciente {
     @Bean ManejadorRegistrarPaciente manejadorRegistrarPaciente(
             ServicioClasificacionPaciente servicio, FabricaPaciente fabrica,
             RepositorioPaciente pacientes, RegistrarCambioPaciente registrarCambio,
-            EjecutorTransaccion transaccion, ContadorClasificaciones contador, Clock reloj) {
+            EjecutorTransaccion transaccion, ContadorClasificaciones contador, Clock reloj,
+            ConfiguracionSla configuracionSla) {
         return new ManejadorRegistrarPaciente(new DependenciasRegistroPaciente(servicio, fabrica, pacientes,
-                registrarCambio, transaccion, contador, reloj));
+                registrarCambio, transaccion, contador, reloj, configuracionSla));
     }
     @Bean ManejadorConsultarPaciente manejadorConsultarPaciente(DaoPaciente dao, Clock reloj) {
         return new ManejadorConsultarPaciente(dao, reloj);

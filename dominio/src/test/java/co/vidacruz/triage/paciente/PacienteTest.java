@@ -2,6 +2,7 @@ package co.vidacruz.triage.paciente;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import co.vidacruz.triage.paciente.modelo.entidad.DatosRegistroPaciente;
 import co.vidacruz.triage.paciente.modelo.entidad.EstadoPaciente;
@@ -32,10 +33,23 @@ class PacienteTest {
         assertNull(dadoDeAlta.fechaPrimeraConsulta());
     }
 
+    @Test void conservaElFlagDeEscalamientoAlCambiarEstado() {
+        var escalado = paciente(true);
+        var enConsulta = escalado.cambiarEstado(EstadoPaciente.EN_CONSULTA, REGISTRO.plusSeconds(60));
+        var dadoDeAlta = enConsulta.cambiarEstado(EstadoPaciente.ALTA, REGISTRO.plusSeconds(120));
+
+        assertTrue(enConsulta.escalado());
+        assertTrue(dadoDeAlta.escalado());
+    }
+
     private Paciente paciente() {
+        return paciente(false);
+    }
+
+    private Paciente paciente(boolean escalado) {
         var datos = new DatosRegistroPaciente("Ana", 30, 80, 120, 80, 98,
                 new BigDecimal("36.5"), 1, 15, "Dolor");
-        return new Paciente(UUID.randomUUID(), datos, NivelTriage.NO_URGENTE, EstadoPaciente.REGISTRADO,
-                false, REGISTRO, REGISTRO, null);
+        return new Paciente(UUID.randomUUID(), datos, NivelTriage.NO_URGENTE, 60, EstadoPaciente.REGISTRADO,
+                escalado, REGISTRO, REGISTRO, null);
     }
 }

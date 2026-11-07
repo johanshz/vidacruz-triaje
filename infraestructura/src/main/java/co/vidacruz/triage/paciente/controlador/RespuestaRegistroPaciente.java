@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public record RespuestaRegistroPaciente(UUID id, String nivel, int slaMinutos, String estado, Instant fechaRegistro) {
     public static RespuestaRegistroPaciente desde(Paciente paciente) {
-        return new RespuestaRegistroPaciente(paciente.id(), paciente.nivel().name(), paciente.nivel().slaMinutos(),
+        return new RespuestaRegistroPaciente(paciente.id(), paciente.nivel().name(), paciente.slaMinutos(),
                 paciente.estado().name(), paciente.fechaRegistro());
     }
 }

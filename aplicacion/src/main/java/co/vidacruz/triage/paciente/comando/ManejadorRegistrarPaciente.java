@@ -1,6 +1,7 @@
 package co.vidacruz.triage.paciente.comando;
 
 import co.vidacruz.triage.paciente.modelo.entidad.Paciente;
+import co.vidacruz.triage.paciente.modelo.entidad.ConfiguracionSla;
 import co.vidacruz.triage.paciente.puerto.repositorio.ContadorClasificaciones;
 import co.vidacruz.triage.paciente.puerto.repositorio.EjecutorTransaccion;
 import co.vidacruz.triage.paciente.puerto.repositorio.RepositorioPaciente;
@@ -19,6 +20,7 @@ public class ManejadorRegistrarPaciente {
     private final EjecutorTransaccion transaccion;
     private final ContadorClasificaciones contador;
     private final Clock reloj;
+    private final ConfiguracionSla configuracionSla;
 
     public ManejadorRegistrarPaciente(DependenciasRegistroPaciente dependencias) {
         this.clasificacion = dependencias.clasificacion();
@@ -28,6 +30,7 @@ public class ManejadorRegistrarPaciente {
         this.transaccion = dependencias.transaccion();
         this.contador = dependencias.contador();
         this.reloj = dependencias.reloj();
+        this.configuracionSla = dependencias.configuracionSla();
     }
 
     public Mono<Paciente> ejecutar(ComandoRegistrarPaciente comando) {
@@ -36,7 +39,7 @@ public class ManejadorRegistrarPaciente {
             var nivel = clasificacion.clasificar(comando.datos());
             Instant ahora = reloj.instant().truncatedTo(ChronoUnit.MICROS);
             UUID id = UUID.randomUUID();
-            Paciente paciente = fabrica.registrado(comando.datos(), nivel, id, ahora);
+            Paciente paciente = fabrica.registrado(comando.datos(), nivel, configuracionSla.minutos(nivel), id, ahora);
             var evento = fabrica.eventoRegistrado(paciente, UUID.randomUUID(), ahora);
             return transaccion.ejecutar(() -> pacientes.guardar(paciente)
                     .then(registrarCambio.registrar(paciente, evento, null))

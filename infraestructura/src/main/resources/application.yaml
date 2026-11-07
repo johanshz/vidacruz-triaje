@@ -60,6 +60,18 @@ logging:
     format:
       console: ecs
 vidacruz:
+  sla:
+    minutos:
+      critico: ${VIDACRUZ_SLA_MINUTOS_CRITICO:5}
+      urgente: ${VIDACRUZ_SLA_MINUTOS_URGENTE:10}
+      urgente-2: ${VIDACRUZ_SLA_MINUTOS_URGENTE_2:30}
+      no-urgente: ${VIDACRUZ_SLA_MINUTOS_NO_URGENTE:60}
+      no-urgente-2: ${VIDACRUZ_SLA_MINUTOS_NO_URGENTE_2:120}
+  vigilancia:
+    intervalo: ${VIDACRUZ_VIGILANCIA_INTERVALO:PT30S}
+  instancia: ${VIDACRUZ_INSTANCIA:${random.uuid}}
+  reporte:
+    zona-horaria: ${VIDACRUZ_REPORTE_ZONA_HORARIA:America/Bogota}
   seguridad:
     api-key: ${TRIAGE_API_KEY}
   outbox:

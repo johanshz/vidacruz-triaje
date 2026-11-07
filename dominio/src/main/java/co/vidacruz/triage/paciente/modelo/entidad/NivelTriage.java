@@ -1,16 +1,13 @@
 package co.vidacruz.triage.paciente.modelo.entidad;
 
 public enum NivelTriage {
-    CRITICO(1, 5), URGENTE(2, 10), URGENTE_2(3, 30), NO_URGENTE(4, 60), NO_URGENTE_2(5, 120);
+    CRITICO(1), URGENTE(2), URGENTE_2(3), NO_URGENTE(4), NO_URGENTE_2(5);
 
     private final int nivel;
-    private final int slaMinutos;
 
-    NivelTriage(int nivel, int slaMinutos) {
+    NivelTriage(int nivel) {
         this.nivel = nivel;
-        this.slaMinutos = slaMinutos;
     }
 
     public int numero() { return nivel; }
-    public int slaMinutos() { return slaMinutos; }
 }

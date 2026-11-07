@@ -27,5 +27,7 @@ abstract class PruebaIntegracionPostgres {
         registry.add("SERVER_PORT", () -> "0");
         registry.add("vidacruz.outbox.intervalo", () -> "PT1H");
         registry.add("vidacruz.outbox.retraso-inicial", () -> "PT1H");
+        registry.add("vidacruz.vigilancia.intervalo", () -> "PT1H");
+        registry.add("vidacruz.vigilancia.retraso-inicial", () -> "PT1H");
     }
 }

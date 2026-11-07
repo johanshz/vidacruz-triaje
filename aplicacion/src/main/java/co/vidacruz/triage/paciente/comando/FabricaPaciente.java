@@ -16,15 +16,15 @@ public class FabricaPaciente {
         var datos = new DatosRegistroPaciente(dto.nombreCompleto(), dto.edad(), dto.frecuenciaCardiaca(),
                 dto.presionSistolica(), dto.presionDiastolica(), dto.spo2(), dto.temperatura(),
                 dto.dolor(), dto.gcs(), dto.quejaPrincipal());
-        return new Paciente(dto.id(), datos, dto.nivel(), dto.estado(), dto.escalado(), dto.fechaRegistro(),
+        return new Paciente(dto.id(), datos, dto.nivel(), dto.slaMinutos(), dto.estado(), dto.escalado(), dto.fechaRegistro(),
                 dto.fechaEstado(), dto.fechaPrimeraConsulta());
     }
 
-    public Paciente registrado(DatosRegistroPaciente datos, NivelTriage nivel, UUID id, Instant ahora) {
+    public Paciente registrado(DatosRegistroPaciente datos, NivelTriage nivel, int slaMinutos, UUID id, Instant ahora) {
         DatosRegistroPaciente recortados = new DatosRegistroPaciente(datos.nombreCompleto().trim(), datos.edad(),
                 datos.frecuenciaCardiaca(), datos.presionSistolica(), datos.presionDiastolica(), datos.spo2(),
                 datos.temperatura(), datos.dolor(), datos.gcs(), datos.quejaPrincipal().trim());
-        return new Paciente(id, recortados, nivel, EstadoPaciente.REGISTRADO, false, ahora, ahora, null);
+        return new Paciente(id, recortados, nivel, slaMinutos, EstadoPaciente.REGISTRADO, false, ahora, ahora, null);
     }
 
     public EventoPaciente eventoRegistrado(Paciente paciente, UUID idEvento, Instant ahora) {
