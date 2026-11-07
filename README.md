@@ -1,6 +1,6 @@
-# Triage
+﻿# Triage
 
-Microservicio reactivo del sistema VidaCruz. Esta entrega deja preparada la infraestructura transversal; los endpoints de negocio se agregan en las siguientes filas del RFC.
+Microservicio reactivo de triaje de VidaCruz. Registra, clasifica y consulta pacientes, cambia su estado y publica eventos confirmados mediante el outbox.
 
 ## Arranque local
 
@@ -15,18 +15,38 @@ curl -i http://localhost:8081/actuator/health/liveness
 curl -i http://localhost:8081/actuator/health/readiness
 ```
 
-`/actuator/info` y `/actuator/prometheus` requieren `X-API-Key`:
+Los errores usan `application/problem+json`, con `codigo` y `traceId`: `VALIDACION` (400), `NO_AUTORIZADO` (401), `NO_ENCONTRADO` (404), `TRANSICION_INVALIDA` (409) y `ERROR_INTERNO` (500).
+
+## Cómo probar el camino del paciente
+
+Define la API key de `.env` en la terminal. Los seis registros corresponden a los ejemplos Ceiba E1-E6:
 
 ```bash
-curl -i http://localhost:8081/actuator/info
-curl -i -H "X-API-Key: $TRIAGE_API_KEY" http://localhost:8081/actuator/info
+export TRIAGE_API_KEY=cambia-esta-api-key-local
+BASE=http://localhost:8081/triage/pacientes
+curl -i -H "X-API-Key: $TRIAGE_API_KEY" -H 'Content-Type: application/json' -d '{"nombreCompleto":"Paciente E1","edad":40,"frecuenciaCardiaca":130,"presionSistolica":180,"presionDiastolica":110,"spo2":97,"temperatura":36.8,"dolor":8,"gcs":15,"quejaPrincipal":"Dolor torácico"}' "$BASE"
+curl -i -H "X-API-Key: $TRIAGE_API_KEY" -H 'Content-Type: application/json' -d '{"nombreCompleto":"Paciente E2","edad":40,"frecuenciaCardiaca":95,"presionSistolica":150,"presionDiastolica":95,"spo2":91,"temperatura":37.0,"dolor":4,"gcs":15,"quejaPrincipal":"Dificultad para respirar"}' "$BASE"
+curl -i -H "X-API-Key: $TRIAGE_API_KEY" -H 'Content-Type: application/json' -d '{"nombreCompleto":"Paciente E3","edad":40,"frecuenciaCardiaca":88,"presionSistolica":130,"presionDiastolica":85,"spo2":98,"temperatura":38.2,"dolor":6,"gcs":15,"quejaPrincipal":"Fiebre"}' "$BASE"
+curl -i -H "X-API-Key: $TRIAGE_API_KEY" -H 'Content-Type: application/json' -d '{"nombreCompleto":"Paciente E4","edad":40,"frecuenciaCardiaca":72,"presionSistolica":120,"presionDiastolica":80,"spo2":99,"temperatura":36.5,"dolor":2,"gcs":15,"quejaPrincipal":"Herida por cortar"}' "$BASE"
+curl -i -H "X-API-Key: $TRIAGE_API_KEY" -H 'Content-Type: application/json' -d '{"nombreCompleto":"Paciente E5","edad":40,"frecuenciaCardiaca":70,"presionSistolica":115,"presionDiastolica":75,"spo2":99,"temperatura":36.4,"dolor":0,"gcs":15,"quejaPrincipal":"Renovación de recetario"}' "$BASE"
+curl -i -H "X-API-Key: $TRIAGE_API_KEY" -H 'Content-Type: application/json' -d '{"nombreCompleto":"Paciente E6","edad":40,"frecuenciaCardiaca":35,"presionSistolica":80,"presionDiastolica":50,"spo2":85,"temperatura":35.9,"dolor":0,"gcs":6,"quejaPrincipal":"Inconsciente"}' "$BASE"
 ```
 
-Los errores usan `application/problem+json`, con `codigo` y `traceId`. Los códigos contemplados son `VALIDACION` (400), `NO_AUTORIZADO` (401), `NO_ENCONTRADO` (404), `TRANSICION_INVALIDA` (409), `SOLICITUD_INVALIDA` (otros 4xx) y `ERROR_INTERNO` (500). Los errores HTTP genéricos usan un detalle en español; los 500 exponen solo un mensaje genérico.
+Guarda el `id` devuelto para consultar y cambiar estado. El primer PATCH es válido para un paciente `REGISTRADO`; repetir una transición no permitida responde 409:
 
-## Supuestos
+```bash
+ID=<uuid-devuelto>
+curl -i -H "X-API-Key: $TRIAGE_API_KEY" "$BASE/$ID"
+curl -i -X PATCH -H "X-API-Key: $TRIAGE_API_KEY" -H 'Content-Type: application/json' -d '{"estado":"EN_CONSULTA"}' "$BASE/$ID/estado"
+curl -i -X PATCH -H "X-API-Key: $TRIAGE_API_KEY" -H 'Content-Type: application/json' -d '{"estado":"REGISTRADO"}' "$BASE/$ID/estado"
+```
 
-- **S-02:** FC, presiones, SpO2, dolor, GCS y edad son enteros; un decimal en un campo entero produce 400.
-- **S-09:** la queja principal admite máximo 500 caracteres; la validación de negocio corresponde a la fila 2.
+Inspecciona los eventos publicados:
 
-Kafka y Redis se levantan en Compose, pero el Triage no los utiliza en esta entrega.
+```bash
+docker compose exec kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server kafka:19092 --topic triaje.eventos --from-beginning
+```
+
+## Configuración
+
+`KAFKA_BOOTSTRAP_SERVERS` apunta a `kafka:19092` dentro de Compose o a `localhost:9092` al ejecutar la aplicación fuera de Docker. `OUTBOX_INTERVAL` y `OUTBOX_BATCH_SIZE` controlan el intervalo y tamaño del lote (por defecto `PT1S` y `100`). Kafka no forma parte de readiness. Si el broker está caído al arranque, Triage inicia y conserva los eventos en PostgreSQL.

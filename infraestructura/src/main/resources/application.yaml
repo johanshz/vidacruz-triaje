@@ -17,6 +17,14 @@ spring:
   jackson:
     deserialization:
       accept-float-as-int: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
 management:
   tracing:
     sampling:
@@ -51,3 +59,6 @@ logging:
 vidacruz:
   seguridad:
     api-key: ${TRIAGE_API_KEY}
+  outbox:
+    intervalo: ${OUTBOX_INTERVAL:PT1S}
+    lote: ${OUTBOX_BATCH_SIZE:100}

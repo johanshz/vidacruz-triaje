@@ -5,4 +5,6 @@ build/
 *.iml
 
 .gradle-home/
+.gradle-cache/
+.gradle-tmp/
 .env
