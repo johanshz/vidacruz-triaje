@@ -1,4 +1,4 @@
-plugins { id 'org.springframework.boot'; id 'java' }
+plugins { id 'org.springframework.boot'; id 'java'; id 'jacoco-report-aggregation' }
 dependencies {
     implementation project(':aplicacion')
     implementation project(':dominio')
@@ -20,4 +20,47 @@ dependencies {
     testImplementation 'org.testcontainers:testcontainers'
     testImplementation 'org.testcontainers:kafka'
     testImplementation 'io.projectreactor.tools:blockhound:1.0.11.RELEASE'
+}
+
+dependencies {
+    jacocoAggregation project(':dominio')
+    jacocoAggregation project(':aplicacion')
+    jacocoAggregation project(':infraestructura')
+}
+
+tasks.named('testCodeCoverageReport') {
+    dependsOn rootProject.subprojects.collect { proyecto -> proyecto.tasks.named('compileJava') }
+    reports {
+        xml.required = true
+        xml.outputLocation = layout.buildDirectory.file('reports/jacoco/test/jacocoTestReport.xml')
+        html.required = true
+    }
+    classDirectories.setFrom(files(classDirectories.files.collect { classDirectory ->
+        fileTree(dir: classDirectory, exclude: ['**/Aplicacion.class', '**/package-info.class'])
+    }))
+}
+
+tasks.register('verificarCoberturaAgregada') {
+    dependsOn tasks.named('testCodeCoverageReport')
+    doLast {
+        def reporte = layout.buildDirectory.file('reports/jacoco/test/jacocoTestReport.xml').get().asFile
+        if (!reporte.exists()) throw new GradleException('No se generó el reporte agregado de JaCoCo')
+        def fabricaDocumentos = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+        fabricaDocumentos.setFeature('http://apache.org/xml/features/nonvalidating/load-external-dtd', false)
+        def documento = fabricaDocumentos.newDocumentBuilder().parse(reporte)
+        def linea = documento.getElementsByTagName('counter').find {
+            it.getAttribute('type') == 'LINE'
+        }
+        if (linea == null) throw new GradleException('El reporte agregado no contiene el contador de líneas')
+        def cubiertas = linea.getAttribute('covered').toBigInteger()
+        def perdidas = linea.getAttribute('missed').toBigInteger()
+        if (cubiertas + perdidas == 0 || cubiertas * 100 / (cubiertas + perdidas) < 80) {
+            throw new GradleException("Cobertura agregada inferior al 80 %: ${cubiertas}/${cubiertas + perdidas}")
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('testCodeCoverageReport')
+    dependsOn tasks.named('verificarCoberturaAgregada')
 }

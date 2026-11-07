@@ -131,4 +131,5 @@ public class ConfiguracionKafka {
                 .multiplier(multiplicador)
                 .jitter(0);
     }
+
 }

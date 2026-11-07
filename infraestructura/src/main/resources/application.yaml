@@ -23,14 +23,20 @@ spring:
   main:
     banner-mode: off
 management:
+  prometheus:
+    metrics:
+      export:
+        enabled: true
   health:
     redis:
       enabled: true
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: [health, info, prometheus]
   endpoint:
+    prometheus:
+      access: unrestricted
     health:
       show-details: never
       probes:

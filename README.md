@@ -1,5 +1,14 @@
 # Asistente VidaCruz
 
+## Reintentos y DLT
+
+Los errores de Redis del listener se reintentan dentro del flujo reactivo con backoff exponencial
+(1, 2 y 4 segundos) y, al agotarse, se publican en `triaje.eventos.DLT`. El `DefaultErrorHandler`
+atiende los fallos síncronos del listener y los errores de deserialización. En esta ruta reactiva,
+el listener completa su etapa asíncrona después de publicar en la DLT, por lo que el contenedor no
+recibe ese error. La DLT serializa el evento ya deserializado y no necesariamente conserva los bytes
+originales del mensaje.
+
 ## Vista de urgencias
 
 ### Entorno local

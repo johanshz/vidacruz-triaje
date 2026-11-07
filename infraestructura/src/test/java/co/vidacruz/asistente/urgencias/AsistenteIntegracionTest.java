@@ -11,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.nio.charset.StandardCharsets;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -19,7 +18,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -59,7 +57,8 @@ class AsistenteIntegracionTest {
             .withCommand("redis-server", "--appendonly", "yes");
 
     @Container
-    static final KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("apache/kafka:4.1.0"));
+    static final KafkaContainer kafka = new KafkaContainer(DockerImageName.parse("apache/kafka:4.1.0"))
+            .withEnv("KAFKA_AUTO_CREATE_TOPICS_ENABLE", "false");
 
     @LocalServerPort private int puerto;
     private static WebTestClient cliente;
@@ -73,18 +72,21 @@ class AsistenteIntegracionTest {
         registro.add("vidacruz.kafka.concurrencia", () -> 1);
     }
 
-    @BeforeAll
-    static void preparar() throws Exception {
-        try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", kafka.getBootstrapServers()))) {
-            admin.createTopics(List.of(
-                    new NewTopic("triaje.eventos", 3, (short) 1),
-                    new NewTopic("triaje.eventos.DLT", 3, (short) 1))).all().get(15, TimeUnit.SECONDS);
-        }
-    }
-
     @Autowired
     void asignarCliente(WebTestClient webTestClient) {
         cliente = webTestClient;
+    }
+
+    @Test
+    @Order(0)
+    void arrancaSinTopicDeEventosYCreaLaDltConTresParticiones() throws Exception {
+        try (AdminClient admin = AdminClient.create(Map.of("bootstrap.servers", kafka.getBootstrapServers()))) {
+            var dlt = admin.describeTopics(List.of("triaje.eventos.DLT")).allTopicNames()
+                    .get(10, TimeUnit.SECONDS).get("triaje.eventos.DLT");
+            org.junit.jupiter.api.Assertions.assertEquals(3, dlt.partitions().size());
+            admin.createTopics(List.of(new org.apache.kafka.clients.admin.NewTopic("triaje.eventos", 3, (short) 1)))
+                    .all().get(10, TimeUnit.SECONDS);
+        }
     }
 
     @Test
@@ -120,12 +122,17 @@ class AsistenteIntegracionTest {
 
     @Test
     @Order(2)
-    void protegeConsultaYDejaProbesAbiertasConTraceId() {
-        cliente.get().uri("http://localhost:" + puerto + "/asistente/estado-urgencias")
+    void protegeConsultaYDejaProbesAbiertasConTraceId(CapturedOutput salida) {
+        var sinClave = cliente.get().uri("http://localhost:" + puerto + "/asistente/estado-urgencias")
                 .exchange().expectStatus().isUnauthorized()
                 .expectHeader().exists("X-Trace-Id")
                 .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON)
-                .expectBody().jsonPath("$.codigo").isEqualTo("NO_AUTORIZADO");
+                .expectBody().jsonPath("$.codigo").isEqualTo("NO_AUTORIZADO").returnResult();
+        String traceId401 = sinClave.getResponseHeaders().getFirst("X-Trace-Id");
+        org.junit.jupiter.api.Assertions.assertTrue(new String(sinClave.getResponseBody(), StandardCharsets.UTF_8)
+                .contains("\"traceId\":\"" + traceId401 + "\""));
+        cliente.get().uri("http://localhost:" + puerto + "/actuator/health/liveness")
+                .exchange().expectStatus().isOk().expectBody().jsonPath("$.status").isEqualTo("UP");
         cliente.get().uri("http://localhost:" + puerto + "/actuator/health/readiness")
                 .exchange().expectStatus().isOk().expectBody().jsonPath("$.status").isEqualTo("UP");
         cliente.get().uri("http://localhost:" + puerto + "/asistente/estado-urgencias")
@@ -134,19 +141,54 @@ class AsistenteIntegracionTest {
                 .exchange().expectStatus().isUnauthorized();
         cliente.get().uri("http://localhost:" + puerto + "/actuator/info")
                 .header("X-API-Key", "clave-integracion").exchange().expectStatus().isOk();
+        cliente.get().uri("http://localhost:" + puerto + "/actuator/prometheus")
+                .exchange().expectStatus().isUnauthorized();
+        cliente.get().uri("http://localhost:" + puerto + "/actuator/prometheus")
+                .header("X-API-Key", "clave-integracion").exchange().expectStatus().isOk();
         cliente.post().uri("http://localhost:" + puerto + "/asistente/estado-urgencias")
                 .header("X-API-Key", "clave-integracion").exchange().expectStatus().isEqualTo(405)
                 .expectHeader().exists("X-Trace-Id")
                 .expectBody().jsonPath("$.codigo").isEqualTo("SOLICITUD_INVALIDA");
-        cliente.get().uri("http://localhost:" + puerto + "/ruta-inexistente")
+        var noEncontrado = cliente.get().uri("http://localhost:" + puerto + "/ruta-inexistente")
                 .header("X-API-Key", "clave-integracion").exchange().expectStatus().isNotFound()
                 .expectHeader().exists("X-Trace-Id")
-                .expectBody().jsonPath("$.codigo").isEqualTo("NO_ENCONTRADO");
+                .expectBody().jsonPath("$.codigo").isEqualTo("NO_ENCONTRADO").returnResult();
+        String traceId404 = noEncontrado.getResponseHeaders().getFirst("X-Trace-Id");
+        org.junit.jupiter.api.Assertions.assertTrue(new String(noEncontrado.getResponseBody(), StandardCharsets.UTF_8)
+                .contains("\"traceId\":\"" + traceId404 + "\""));
+        org.junit.jupiter.api.Assertions.assertTrue(salida.getOut().contains(traceId401));
+        org.junit.jupiter.api.Assertions.assertTrue(salida.getOut().contains(traceId404));
     }
 
     @Test
     @Order(3)
+    void devuelveConteosPorNivelTrasDosRegistrosOtroNivelYUnAlta() throws Exception {
+        redis.execInContainer("redis-cli", "FLUSHDB");
+        String criticoUno = UUID.randomUUID().toString();
+        String criticoDos = UUID.randomUUID().toString();
+        String noUrgente = UUID.randomUUID().toString();
+        try (KafkaProducer<String, String> productor = new KafkaProducer<>(propiedadesProductor())) {
+            productor.send(new ProducerRecord<>("triaje.eventos", criticoUno,
+                    evento(criticoUno, "paciente_registrado", "CRITICO"))).get(10, TimeUnit.SECONDS);
+            productor.send(new ProducerRecord<>("triaje.eventos", criticoDos,
+                    evento(criticoDos, "paciente_registrado", "CRITICO"))).get(10, TimeUnit.SECONDS);
+            productor.send(new ProducerRecord<>("triaje.eventos", noUrgente,
+                    evento(noUrgente, "paciente_registrado", "NO_URGENTE_2"))).get(10, TimeUnit.SECONDS);
+            productor.send(new ProducerRecord<>("triaje.eventos", criticoUno,
+                    evento(criticoUno, "paciente_alta", null))).get(10, TimeUnit.SECONDS);
+        }
+        await().atMost(Duration.ofSeconds(20)).untilAsserted(() -> cliente.get()
+                .uri("http://localhost:" + puerto + "/asistente/estado-urgencias")
+                .header("X-API-Key", "clave-integracion").exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.porNivel.CRITICO").isEqualTo(1)
+                .jsonPath("$.porNivel.NO_URGENTE_2").isEqualTo(1)
+                .jsonPath("$.totalActivos").isEqualTo(2));
+    }
+
+    @Test
+    @Order(4)
     void enviaJsonMalFormadoALaDltSinReintentoYContinuaConElSiguienteOffset() throws Exception {
+        redis.execInContainer("redis-cli", "FLUSHDB");
         Properties configuracion = new Properties();
         configuracion.put("bootstrap.servers", kafka.getBootstrapServers());
         configuracion.put(ConsumerConfig.GROUP_ID_CONFIG, "dlt-test-" + UUID.randomUUID());
@@ -181,7 +223,7 @@ class AsistenteIntegracionTest {
     }
 
     @Test
-    @Order(4)
+    @Order(5)
     void reintentaFalloTransitorioDeRedisYTieneDltFinal() throws Exception {
         String id = UUID.randomUUID().toString();
         Properties configuracion = new Properties();
@@ -194,6 +236,11 @@ class AsistenteIntegracionTest {
             consumidor.subscribe(List.of("triaje.eventos.DLT"));
             consumidor.poll(Duration.ofMillis(500));
             redis.stop();
+            cliente.get().uri("http://localhost:" + puerto + "/actuator/health/readiness")
+                    .exchange().expectStatus().isOk().expectBody().jsonPath("$.status").isEqualTo("UP");
+            cliente.get().uri("http://localhost:" + puerto + "/asistente/estado-urgencias")
+                    .header("X-API-Key", "clave-integracion").exchange().expectStatus().isEqualTo(503)
+                    .expectBody().jsonPath("$.codigo").isEqualTo("URGENCIAS_NO_DISPONIBLE");
             try (KafkaProducer<String, String> productor = new KafkaProducer<>(propiedadesProductor())) {
                 productor.send(new ProducerRecord<>("triaje.eventos", id,
                         evento(id, "paciente_registrado", "URGENTE"))).get(10, TimeUnit.SECONDS);
@@ -207,6 +254,8 @@ class AsistenteIntegracionTest {
                 org.junit.jupiter.api.Assertions.assertNotNull(recibido.get());
             });
             org.junit.jupiter.api.Assertions.assertTrue(recibido.get().value().contains(id));
+        } finally {
+            redis.start();
         }
     }
 
