@@ -2,7 +2,6 @@ package co.vidacruz.triage.paciente;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -42,7 +41,7 @@ class ManejadorCambiarEstadoPacienteTest {
         var actual = dto(EstadoPaciente.REGISTRADO, Instant.parse("2026-11-06T10:00:00Z"), null);
         var actualizado = dto(EstadoPaciente.EN_CONSULTA, AHORA, AHORA);
         when(dao.consultar(eq(ID), any())).thenReturn(Mono.just(actual), Mono.just(actualizado));
-        when(pacientes.cambiarEstado(eq(ID), any(), eq("REGISTRADO"))).thenReturn(Mono.just(true));
+        when(pacientes.cambiarEstado(any(), eq(EstadoPaciente.REGISTRADO))).thenReturn(Mono.just(true));
         when(registrarCambio.registrar(any(), any(), eq(EstadoPaciente.REGISTRADO))).thenReturn(Mono.empty());
 
         StepVerifier.create(manejador().ejecutar(new ComandoCambiarEstadoPaciente(ID, EstadoPaciente.EN_CONSULTA)))
@@ -65,13 +64,13 @@ class ManejadorCambiarEstadoPacienteTest {
                 .expectErrorMatches(error -> error instanceof ExcepcionTransicionInvalida
                         && error.getMessage().equals("No se puede pasar de ALTA a EN_CONSULTA"))
                 .verify();
-        verify(pacientes, never()).cambiarEstado(any(), any(), anyString());
+        verify(pacientes, never()).cambiarEstado(any(), any());
         verify(registrarCambio, never()).registrar(any(), any(), any());
     }
 
     @Test void conflictoOptimistaProduceExcepcionDeTransicionContractual() {
         when(dao.consultar(eq(ID), any())).thenReturn(Mono.just(dto(EstadoPaciente.REGISTRADO, AHORA, null)));
-        when(pacientes.cambiarEstado(eq(ID), any(), eq("REGISTRADO"))).thenReturn(Mono.just(false));
+        when(pacientes.cambiarEstado(any(), eq(EstadoPaciente.REGISTRADO))).thenReturn(Mono.just(false));
 
         StepVerifier.create(manejador().ejecutar(new ComandoCambiarEstadoPaciente(ID, EstadoPaciente.EN_CONSULTA)))
                 .expectErrorMatches(error -> error instanceof ExcepcionTransicionInvalida

@@ -12,9 +12,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 public class ServicioEscalamiento {
+    private static final long SEGUNDOS_POR_MINUTO = 60L;
     public boolean estaVencido(Paciente paciente, Instant ahora) {
         return paciente.estado() == EstadoPaciente.REGISTRADO && !paciente.escalado()
-                && !ahora.isBefore(paciente.fechaRegistro().plusSeconds(paciente.slaMinutos() * 60L));
+                && !ahora.isBefore(paciente.fechaRegistro().plusSeconds(paciente.slaMinutos() * SEGUNDOS_POR_MINUTO));
     }
 
     public CambioEscalamiento crearCambio(PacienteEscalado paciente, Instant ocurridoEn) {

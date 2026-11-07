@@ -49,7 +49,11 @@ class PacienteTest {
     private Paciente paciente(boolean escalado) {
         var datos = new DatosRegistroPaciente("Ana", 30, 80, 120, 80, 98,
                 new BigDecimal("36.5"), 1, 15, "Dolor");
-        return new Paciente(UUID.randomUUID(), datos, NivelTriage.NO_URGENTE, 60, EstadoPaciente.REGISTRADO,
-                escalado, REGISTRO, REGISTRO, null);
+        var paciente = Paciente.registrado(UUID.randomUUID(), datos, NivelTriage.NO_URGENTE, 60, REGISTRO);
+        return escalado
+                ? new Paciente(paciente.id(), paciente.datos(), paciente.nivel(), paciente.slaMinutos(),
+                        paciente.estado(), true, paciente.fechaRegistro(), paciente.fechaEstado(),
+                        paciente.fechaPrimeraConsulta())
+                : paciente;
     }
 }

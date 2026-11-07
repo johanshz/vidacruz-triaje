@@ -9,5 +9,7 @@ import co.vidacruz.triage.vigilancia.servicio.ServicioEscalamiento;
 import java.time.Clock;
 
 public record DependenciasEscalamiento(RepositorioEscalamiento repositorio, RepositorioAuditoria auditoria,
-        RepositorioOutbox outbox, EjecutorTransaccion transaccion, ServicioEscalamiento servicio,
-        ContadorEscalamientos contador, Clock reloj) { }
+        RepositorioOutbox outbox, EjecutorTransaccion transaccion, ContextoEscalamiento contexto) {
+    public record ContextoEscalamiento(ServicioEscalamiento servicio,
+            ContadorEscalamientos contador, Clock reloj) { }
+}

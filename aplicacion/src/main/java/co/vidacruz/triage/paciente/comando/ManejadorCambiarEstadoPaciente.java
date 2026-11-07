@@ -47,7 +47,7 @@ public class ManejadorCambiarEstadoPaciente {
                     var evento = new EventoPaciente(idEvento, tipo, EventoPaciente.VERSION_ACTUAL,
                             entidad.fechaEstado(), new DatosEventoPaciente(entidad.id(), entidad.nivel().name(),
                                     anterior.name(), entidad.estado().name(), entidad.escalado()));
-                    return pacientes.cambiarEstado(comando.id(), entidad, anterior.name())
+                    return pacientes.cambiarEstado(entidad, anterior)
                             .flatMap(actualizado -> {
                                 if (!actualizado) {
                                     return Mono.error(new ExcepcionTransicionInvalida(anterior, comando.estado()));

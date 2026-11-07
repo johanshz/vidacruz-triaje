@@ -92,7 +92,9 @@ class ManejadorEscalarVencidosTest {
             }
         };
         ContadorEscalamientos contador = incrementos::incrementAndGet;
+        var contexto = new DependenciasEscalamiento.ContextoEscalamiento(new ServicioEscalamiento(), contador,
+                Clock.fixed(AHORA, ZoneOffset.UTC));
         return new ManejadorEscalarVencidos(new DependenciasEscalamiento(repositorio, auditoria, outbox,
-                transaccion, new ServicioEscalamiento(), contador, Clock.fixed(AHORA, ZoneOffset.UTC)));
+                transaccion, contexto));
     }
 }

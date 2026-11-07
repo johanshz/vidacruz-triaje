@@ -18,7 +18,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "vidacruz.sla.minutos.critico=1")
 class EscalamientoIntegracionTest extends SoporteIntegracionTriage {
     @Autowired private ManejadorEscalarVencidos manejador;
     @Autowired private MeterRegistry registroMetricas;
@@ -62,6 +63,30 @@ class EscalamientoIntegracionTest extends SoporteIntegracionTriage {
                 .expectNext(false).verifyComplete();
         StepVerifier.create(contar("SELECT COUNT(*) AS total FROM auditoria WHERE paciente_id = :id "
                 + "AND tipo_evento = 'paciente_escalado'", id)).expectNext(0L).verifyComplete();
+    }
+
+    @Test
+    void usaElSlaPersistidoAunqueCambieLaPropiedadGlobal() throws InterruptedException {
+        UUID id = UUID.randomUUID();
+        Instant registro = Instant.now().minusSeconds(299);
+        StepVerifier.create(databaseClient.sql("""
+                INSERT INTO paciente (id, nombre_completo, edad, frecuencia_cardiaca, presion_sistolica,
+                    presion_diastolica, spo2, temperatura, dolor, gcs, queja_principal, nivel,
+                    sla_minutos, estado, escalado, fecha_registro, fecha_estado)
+                VALUES (:id, 'Paciente con SLA propio', 30, 80, 120, 80, 98, 36.5, 0, 15, 'Dolor',
+                    'CRITICO', 5, 'REGISTRADO', false, :fecha, :fecha)
+                """).bind("id", id).bind("fecha", registro).fetch().rowsUpdated()).expectNext(1L).verifyComplete();
+
+        StepVerifier.create(manejador.ejecutar(new ComandoEscalarVencidos())).verifyComplete();
+        StepVerifier.create(databaseClient.sql("SELECT escalado FROM paciente WHERE id = :id")
+                .bind("id", id).map((fila, metadata) -> fila.get("escalado", Boolean.class)).one())
+                .expectNext(false).verifyComplete();
+
+        Thread.sleep(1_200);
+        StepVerifier.create(manejador.ejecutar(new ComandoEscalarVencidos())).verifyComplete();
+        StepVerifier.create(databaseClient.sql("SELECT escalado FROM paciente WHERE id = :id")
+                .bind("id", id).map((fila, metadata) -> fila.get("escalado", Boolean.class)).one())
+                .expectNext(true).verifyComplete();
     }
 
     private Mono<Long> insertarPacienteVencido(UUID id) {

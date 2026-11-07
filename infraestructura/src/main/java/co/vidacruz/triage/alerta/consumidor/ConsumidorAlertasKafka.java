@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
@@ -26,13 +27,16 @@ public class ConsumidorAlertasKafka {
     private final ManejadorEmitirAlerta manejador;
     private final MemoriaIdsEventoProcesados idsProcesados;
     private final KafkaTemplate<String, String> kafka;
+    private final Duration timeoutDlt;
 
     public ConsumidorAlertasKafka(ObjectMapper mapper, ManejadorEmitirAlerta manejador,
-            MemoriaIdsEventoProcesados idsProcesados, KafkaTemplate<String, String> kafka) {
+            MemoriaIdsEventoProcesados idsProcesados, KafkaTemplate<String, String> kafka,
+            @Value("${vidacruz.kafka.timeout-dlt:PT10S}") Duration timeoutDlt) {
         this.mapper = mapper;
         this.manejador = manejador;
         this.idsProcesados = idsProcesados;
         this.kafka = kafka;
+        this.timeoutDlt = timeoutDlt;
     }
 
     @KafkaListener(topics = ConfiguracionKafka.TOPIC_EVENTOS,
@@ -45,6 +49,7 @@ public class ConsumidorAlertasKafka {
                                 registro.partition(), registro.key(), registro.value()))
                         .subscribeOn(Schedulers.boundedElastic())
                         .flatMap(Mono::fromFuture)
+                        .timeout(timeoutDlt)
                         .doOnSuccess(ignorado -> LOGGER.error("Evento enviado a DLT tras agotar reintentos", error))
                         .then())
                 .toFuture();

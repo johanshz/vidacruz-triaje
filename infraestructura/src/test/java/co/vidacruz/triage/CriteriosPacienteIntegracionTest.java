@@ -86,6 +86,42 @@ class CriteriosPacienteIntegracionTest extends SoporteIntegracionTriage {
                 .jsonPath("$.campo").isEqualTo("id");
     }
 
+    @Test void registroFelizDelInformeQaDevuelveCreado() {
+        String cuerpo = "{\"nombreCompleto\":\"Ana Pérez QA 20261107\",\"edad\":35,"
+                + "\"frecuenciaCardiaca\":80,\"presionSistolica\":120,\"presionDiastolica\":80,"
+                + "\"spo2\":98,\"temperatura\":36.5,\"dolor\":2,\"gcs\":15,"
+                + "\"quejaPrincipal\":\"Dolor de cabeza\"}";
+
+        webTestClient.post().uri("/triage/pacientes").header("X-API-Key", "clave-prueba")
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(cuerpo).exchange()
+                .expectStatus().isCreated().expectBody().jsonPath("$.id").exists();
+    }
+
+    @Test void patchDePacienteInexistenteDevuelve404() {
+        webTestClient.patch().uri("/triage/pacientes/{id}/estado", UUID.randomUUID())
+                .header("X-API-Key", "clave-prueba").contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"estado\":\"EN_CONSULTA\"}").exchange()
+                .expectStatus().isNotFound().expectBody().jsonPath("$.codigo").isEqualTo("NO_ENCONTRADO");
+    }
+
+    @Test void conservaIndicadorEscaladoAlCambiarAConsultaYAlta() {
+        UUID id = UUID.randomUUID();
+        StepVerifier.create(insertarPaciente(id)).expectNext(1L).verifyComplete();
+        StepVerifier.create(databaseClient.sql("UPDATE paciente SET escalado = true WHERE id = :id")
+                .bind("id", id).fetch().rowsUpdated()).expectNext(1L).verifyComplete();
+
+        cambiarEstadoYComprobarEscalado(id, "EN_CONSULTA");
+        cambiarEstadoYComprobarEscalado(id, "ALTA");
+    }
+
+    private void cambiarEstadoYComprobarEscalado(UUID id, String estado) {
+        webTestClient.patch().uri("/triage/pacientes/{id}/estado", id).header("X-API-Key", "clave-prueba")
+                .contentType(MediaType.APPLICATION_JSON).bodyValue("{\"estado\":\"" + estado + "\"}")
+                .exchange().expectStatus().is2xxSuccessful();
+        webTestClient.get().uri("/triage/pacientes/{id}", id).header("X-API-Key", "clave-prueba")
+                .exchange().expectStatus().isOk().expectBody().jsonPath("$.escalado").isEqualTo(true);
+    }
+
     @Test void todosLosEndpointsDelPacienteRequierenApiKeyYNoEscribenSinAutorizacion() {
         AtomicLong antes = new AtomicLong();
         StepVerifier.create(totalFilasPacienteAuditoriaOutbox()).assertNext(antes::set).verifyComplete();

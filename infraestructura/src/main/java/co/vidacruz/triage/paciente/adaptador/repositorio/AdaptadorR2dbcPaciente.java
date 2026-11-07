@@ -5,7 +5,9 @@ import co.vidacruz.triage.paciente.puerto.repositorio.RepositorioPaciente;
 import co.vidacruz.triage.vigilancia.modelo.entidad.PacienteEscalado;
 import co.vidacruz.triage.vigilancia.puerto.repositorio.RepositorioEscalamiento;
 import co.vidacruz.triage.paciente.modelo.entidad.NivelTriage;
+import co.vidacruz.triage.paciente.modelo.entidad.EstadoPaciente;
 import java.time.Instant;
+import java.util.UUID;
 import java.util.UUID;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
@@ -19,8 +21,8 @@ public class AdaptadorR2dbcPaciente implements RepositorioPaciente, RepositorioE
     public AdaptadorR2dbcPaciente(DatabaseClient db) { this.db = db; }
 
     @Override
-    public Mono<Void> guardar(Paciente p) {
-        var d = p.datos();
+    public Mono<Void> guardar(Paciente paciente) {
+        var datos = paciente.datos();
         String insercion = """
                 INSERT INTO paciente (
                     id, nombre_completo, edad, frecuencia_cardiaca, presion_sistolica,
@@ -33,18 +35,22 @@ public class AdaptadorR2dbcPaciente implements RepositorioPaciente, RepositorioE
                     :primera
                 )
                 """;
-        return db.sql(insercion)
-                .bind("id", p.id()).bind("nombre", d.nombreCompleto()).bind("edad", (short) d.edad())
-                .bind("fc", (short) d.frecuenciaCardiaca()).bind("ps", (short) d.presionSistolica())
-                .bind("pd", (short) d.presionDiastolica()).bind("spo2", (short) d.spo2())
-                .bind("temp", d.temperatura()).bind("dolor", (short) d.dolor()).bind("gcs", (short) d.gcs())
-                .bind("queja", d.quejaPrincipal()).bind("nivel", p.nivel().name()).bind("sla", p.slaMinutos())
-                .bind("estado", p.estado().name()).bind("escalado", p.escalado()).bind("registro", p.fechaRegistro())
-                .bind("fechaEstado", p.fechaEstado()).bindNull("primera", java.time.Instant.class).fetch().rowsUpdated().then();
+        var ejecucion = db.sql(insercion)
+                .bind("id", paciente.id()).bind("nombre", datos.nombreCompleto()).bind("edad", (short) datos.edad())
+                .bind("fc", (short) datos.frecuenciaCardiaca()).bind("ps", (short) datos.presionSistolica())
+                .bind("pd", (short) datos.presionDiastolica()).bind("spo2", (short) datos.spo2())
+                .bind("temp", datos.temperatura()).bind("dolor", (short) datos.dolor()).bind("gcs", (short) datos.gcs())
+                .bind("queja", datos.quejaPrincipal()).bind("nivel", paciente.nivel().name()).bind("sla", paciente.slaMinutos())
+                .bind("estado", paciente.estado().name()).bind("escalado", paciente.escalado()).bind("registro", paciente.fechaRegistro())
+                .bind("fechaEstado", paciente.fechaEstado());
+        var consulta = paciente.fechaPrimeraConsulta() == null
+                ? ejecucion.bindNull("primera", Instant.class)
+                : ejecucion.bind("primera", paciente.fechaPrimeraConsulta());
+        return consulta.fetch().rowsUpdated().then();
     }
 
     @Override
-    public Mono<Boolean> cambiarEstado(UUID id, Paciente p, String estadoAnterior) {
+    public Mono<Boolean> cambiarEstado(Paciente paciente, EstadoPaciente estadoAnterior) {
         String actualizacion = """
                 UPDATE paciente
                 SET estado = :estado, fecha_estado = :fechaEstado,
@@ -52,9 +58,10 @@ public class AdaptadorR2dbcPaciente implements RepositorioPaciente, RepositorioE
                 WHERE id = :id AND estado = :anterior
                 """;
         var consulta = db.sql(actualizacion)
-                .bind("estado", p.estado().name()).bind("fechaEstado", p.fechaEstado()).bind("id", id).bind("anterior", estadoAnterior);
-        if (p.fechaPrimeraConsulta() == null) consulta = consulta.bindNull("primera", java.time.Instant.class);
-        else consulta = consulta.bind("primera", p.fechaPrimeraConsulta());
+                .bind("estado", paciente.estado().name()).bind("fechaEstado", paciente.fechaEstado())
+                .bind("id", paciente.id()).bind("anterior", estadoAnterior.name());
+        if (paciente.fechaPrimeraConsulta() == null) consulta = consulta.bindNull("primera", Instant.class);
+        else consulta = consulta.bind("primera", paciente.fechaPrimeraConsulta());
         return consulta.fetch().rowsUpdated().map(actualizadas -> actualizadas == 1);
     }
 

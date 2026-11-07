@@ -2,7 +2,6 @@ package co.vidacruz.triage.paciente.configuracion;
 
 import co.vidacruz.triage.evento.puerto.repositorio.RepositorioOutbox;
 import co.vidacruz.triage.paciente.comando.RegistrarCambioPaciente;
-import co.vidacruz.triage.paciente.comando.FabricaPaciente;
 import co.vidacruz.triage.paciente.comando.DependenciasRegistroPaciente;
 import co.vidacruz.triage.paciente.comando.DependenciasCambioEstadoPaciente;
 import co.vidacruz.triage.paciente.comando.ManejadorCambiarEstadoPaciente;
@@ -28,19 +27,22 @@ public class ConfiguracionCasosUsoPaciente {
     }
     @Bean Clock relojTriage() { return Clock.systemUTC(); }
     @Bean ServicioClasificacionPaciente servicioClasificacionPaciente() { return new ServicioClasificacionPaciente(); }
-    @Bean FabricaPaciente fabricaPaciente() { return new FabricaPaciente(); }
     @Bean RegistrarCambioPaciente registrarCambioPaciente(
             RepositorioAuditoria auditoria,
             RepositorioOutbox outbox) {
         return new RegistrarCambioPaciente(auditoria, outbox);
     }
-    @Bean ManejadorRegistrarPaciente manejadorRegistrarPaciente(
-            ServicioClasificacionPaciente servicio, FabricaPaciente fabrica,
+    @Bean DependenciasRegistroPaciente.ContextoRegistroPaciente contextoRegistroPaciente(
+            ContadorClasificaciones contador, Clock reloj, ConfiguracionSla configuracionSla) {
+        return new DependenciasRegistroPaciente.ContextoRegistroPaciente(contador, reloj, configuracionSla);
+    }
+    @Bean DependenciasRegistroPaciente dependenciasRegistroPaciente(ServicioClasificacionPaciente servicio,
             RepositorioPaciente pacientes, RegistrarCambioPaciente registrarCambio,
-            EjecutorTransaccion transaccion, ContadorClasificaciones contador, Clock reloj,
-            ConfiguracionSla configuracionSla) {
-        return new ManejadorRegistrarPaciente(new DependenciasRegistroPaciente(servicio, fabrica, pacientes,
-                registrarCambio, transaccion, contador, reloj, configuracionSla));
+            EjecutorTransaccion transaccion, DependenciasRegistroPaciente.ContextoRegistroPaciente contexto) {
+        return new DependenciasRegistroPaciente(servicio, pacientes, registrarCambio, transaccion, contexto);
+    }
+    @Bean ManejadorRegistrarPaciente manejadorRegistrarPaciente(DependenciasRegistroPaciente dependencias) {
+        return new ManejadorRegistrarPaciente(dependencias);
     }
     @Bean ManejadorConsultarPaciente manejadorConsultarPaciente(DaoPaciente dao, Clock reloj) {
         return new ManejadorConsultarPaciente(dao, reloj);

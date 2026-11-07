@@ -27,7 +27,7 @@ public class ConsultaControladorAlerta {
         Flux<AlertaEscalamiento> estadoInicial = dao.consultarEscaladosActivos(reloj.instant());
         ServerSentEvent<AlertaEscalamiento> conectado = ServerSentEvent.<AlertaEscalamiento>builder()
                 .comment("conectado").build();
-        return Flux.just(conectado).concatWith(estadoInicial.concatWith(notificador.nuevas())
+        return Flux.just(conectado).concatWith(Flux.mergeSequential(estadoInicial, notificador.nuevas())
                 .map(alerta -> ServerSentEvent.builder(alerta).event("alerta").build()));
     }
 }

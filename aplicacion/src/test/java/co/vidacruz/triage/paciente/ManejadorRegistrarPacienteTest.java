@@ -88,10 +88,10 @@ class ManejadorRegistrarPacienteTest {
             public <T> Mono<T> ejecutar(java.util.function.Supplier<Mono<T>> trabajo) { return Mono.defer(trabajo); }
         };
         ContadorClasificaciones contador = nivel -> incrementos.incrementAndGet();
-        var dependencias = new DependenciasRegistroPaciente(new ServicioClasificacionPaciente(), new FabricaPaciente(),
-                pacientes, registrarCambio, transaccion, contador,
-                Clock.fixed(Instant.parse("2026-11-06T00:00:00Z"), ZoneOffset.UTC),
-                configuracion);
+        var contexto = new DependenciasRegistroPaciente.ContextoRegistroPaciente(contador,
+                Clock.fixed(Instant.parse("2026-11-06T00:00:00Z"), ZoneOffset.UTC), configuracion);
+        var dependencias = new DependenciasRegistroPaciente(new ServicioClasificacionPaciente(), pacientes,
+                registrarCambio, transaccion, contexto);
         return new ManejadorRegistrarPaciente(dependencias);
     }
 

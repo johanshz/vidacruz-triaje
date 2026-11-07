@@ -9,16 +9,22 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
+import java.time.Duration;
 
 @Configuration
 public class ConfiguracionErroresKafka {
+    private static final int REINTENTOS_MAXIMOS = 3;
+    private static final Duration ESPERA_INICIAL_REINTENTO = Duration.ofMillis(500);
+    private static final double MULTIPLICADOR_REINTENTO = 2.0;
+    private static final Duration ESPERA_MAXIMA_REINTENTO = Duration.ofSeconds(5);
+
     @Bean
     DefaultErrorHandler manejadorErroresKafka(KafkaTemplate<String, String> kafka) {
         var recuperador = new DeadLetterPublishingRecoverer(kafka);
-        var espera = new ExponentialBackOffWithMaxRetries(3);
-        espera.setInitialInterval(500L);
-        espera.setMultiplier(2.0);
-        espera.setMaxInterval(5000L);
+        var espera = new ExponentialBackOffWithMaxRetries(REINTENTOS_MAXIMOS);
+        espera.setInitialInterval(ESPERA_INICIAL_REINTENTO.toMillis());
+        espera.setMultiplier(MULTIPLICADOR_REINTENTO);
+        espera.setMaxInterval(ESPERA_MAXIMA_REINTENTO.toMillis());
         return new DefaultErrorHandler(recuperador, espera);
     }
 

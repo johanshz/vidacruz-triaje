@@ -9,6 +9,7 @@ import co.vidacruz.triage.vigilancia.puerto.repositorio.ContadorEscalamientos;
 import co.vidacruz.triage.vigilancia.puerto.repositorio.RepositorioEscalamiento;
 import co.vidacruz.triage.vigilancia.servicio.ServicioEscalamiento;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Counter;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,15 +23,25 @@ public class ConfiguracionVigilancia {
 
     @Bean
     ContadorEscalamientos contadorEscalamientos(MeterRegistry registro) {
-        var contador = io.micrometer.core.instrument.Counter.builder("triaje.escalamientos").register(registro);
+        var contador = Counter.builder("triaje.escalamientos").register(registro);
         return contador::increment;
     }
 
     @Bean
-    ManejadorEscalarVencidos manejadorEscalarVencidos(RepositorioEscalamiento repositorio,
+    DependenciasEscalamiento.ContextoEscalamiento contextoEscalamiento(ServicioEscalamiento servicio,
+            ContadorEscalamientos contador, Clock reloj) {
+        return new DependenciasEscalamiento.ContextoEscalamiento(servicio, contador, reloj);
+    }
+
+    @Bean
+    DependenciasEscalamiento dependenciasEscalamiento(RepositorioEscalamiento repositorio,
             RepositorioAuditoria auditoria, RepositorioOutbox outbox, EjecutorTransaccion transaccion,
-            ServicioEscalamiento servicio, ContadorEscalamientos contador, Clock reloj) {
-        return new ManejadorEscalarVencidos(new DependenciasEscalamiento(repositorio, auditoria, outbox,
-                transaccion, servicio, contador, reloj));
+            DependenciasEscalamiento.ContextoEscalamiento contexto) {
+        return new DependenciasEscalamiento(repositorio, auditoria, outbox, transaccion, contexto);
+    }
+
+    @Bean
+    ManejadorEscalarVencidos manejadorEscalarVencidos(DependenciasEscalamiento dependencias) {
+        return new ManejadorEscalarVencidos(dependencias);
     }
 }

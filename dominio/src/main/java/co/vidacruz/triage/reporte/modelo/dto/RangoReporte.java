@@ -6,7 +6,10 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 
 public record RangoReporte(OffsetDateTime desde, OffsetDateTime hasta) {
-    private static final Duration RANGO_MAXIMO = Duration.ofDays(31);
+    private static final int DIAS_RANGO_MAXIMO = 31;
+    private static final Duration RANGO_MAXIMO = Duration.ofDays(DIAS_RANGO_MAXIMO);
+    private static final String MENSAJE_RANGO_MAXIMO = String.format(
+            "El rango no puede superar %d días", DIAS_RANGO_MAXIMO);
 
     public static RangoReporte desdeParametros(String desdeTexto, String hastaTexto) {
         OffsetDateTime desde = parsear(desdeTexto, "desde");
@@ -15,7 +18,7 @@ public record RangoReporte(OffsetDateTime desde, OffsetDateTime hasta) {
             throw new ExcepcionValidacion("hasta", "Debe ser posterior a desde");
         }
         if (Duration.between(desde.toInstant(), hasta.toInstant()).compareTo(RANGO_MAXIMO) > 0) {
-            throw new ExcepcionValidacion("hasta", "El rango no puede superar 31 días");
+            throw new ExcepcionValidacion("hasta", MENSAJE_RANGO_MAXIMO);
         }
         return new RangoReporte(desde, hasta);
     }

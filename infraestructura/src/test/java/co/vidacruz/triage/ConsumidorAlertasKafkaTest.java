@@ -27,7 +27,7 @@ class ConsumidorAlertasKafkaTest {
     private final ManejadorEmitirAlerta manejador = mock(ManejadorEmitirAlerta.class);
     private final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
     private final ConsumidorAlertasKafka consumidor = new ConsumidorAlertasKafka(mapper, manejador,
-            new MemoriaIdsEventoProcesados(10), mock(KafkaTemplate.class));
+            new MemoriaIdsEventoProcesados(10), mock(KafkaTemplate.class), java.time.Duration.ofSeconds(10));
     private final UUID idEvento = UUID.randomUUID();
     private final UUID idPaciente = UUID.randomUUID();
     private final Instant ocurridoEn = Instant.parse("2026-11-06T10:00:00Z");

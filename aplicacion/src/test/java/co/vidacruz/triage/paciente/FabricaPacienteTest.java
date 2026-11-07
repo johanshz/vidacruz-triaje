@@ -18,8 +18,9 @@ class FabricaPacienteTest {
         var datos = new DatosRegistroPaciente(" Ana ", 40, 70, 120, 80, 98,
                 new BigDecimal("36.5"), 2, 15, " Dolor ");
         var instante = Instant.parse("2026-11-06T10:00:00Z");
-        var paciente = new FabricaPaciente().registrado(datos, NivelTriage.NO_URGENTE, 60, UUID.randomUUID(), instante);
-        var evento = new FabricaPaciente().eventoRegistrado(paciente, UUID.randomUUID(), instante);
+        var paciente = FabricaPaciente.registrado(new co.vidacruz.triage.paciente.comando.EntradaPacienteRegistrado(
+                datos, NivelTriage.NO_URGENTE, 60, UUID.randomUUID(), instante));
+        var evento = FabricaPaciente.eventoRegistrado(paciente, UUID.randomUUID(), instante);
 
         assertEquals("Ana", paciente.datos().nombreCompleto());
         assertEquals("Dolor", paciente.datos().quejaPrincipal());

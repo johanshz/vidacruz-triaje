@@ -2,6 +2,7 @@ package co.vidacruz.triage;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import co.vidacruz.triage.alerta.adaptador.sse.AdaptadorSseAlerta;
+import co.vidacruz.triage.alerta.modelo.dto.AlertaEscalamiento;
 import co.vidacruz.triage.evento.modelo.entidad.DatosEventoPaciente;
 import co.vidacruz.triage.evento.modelo.entidad.EventoPaciente;
 import co.vidacruz.triage.evento.configuracion.ConfiguracionKafka;
@@ -20,6 +21,12 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.boot.web.reactive.context.ReactiveWebServerApplicationContext;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
+import org.springframework.test.web.reactive.server.FluxExchangeResult;
+import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.testcontainers.kafka.KafkaContainer;
@@ -45,16 +52,22 @@ class AlertasKafkaIntegracionTest extends PruebaIntegracionPostgres {
             StepVerifier.create(insertarPaciente(db, idPaciente, registro)).expectNext(1L).verifyComplete();
             crearTemaDlt();
 
-            var salidaA = replicaA.getBean(AdaptadorSseAlerta.class).nuevas().next();
+            int puerto = ((ReactiveWebServerApplicationContext) replicaA).getWebServer().getPort();
+            FluxExchangeResult<ServerSentEvent<AlertaEscalamiento>> conexionSse = WebTestClient.bindToServer()
+                    .baseUrl("http://localhost:" + puerto).build().get().uri("/triage/alertas/flujo")
+                    .header("X-API-Key", "clave-prueba").accept(MediaType.TEXT_EVENT_STREAM)
+                    .exchange().expectStatus().isOk()
+                    .returnResult(new ParameterizedTypeReference<>() { });
+            var salidaA = conexionSse.getResponseBody().filter(eventoSse -> "alerta".equals(eventoSse.event())).next();
             var salidaB = replicaB.getBean(AdaptadorSseAlerta.class).nuevas().next();
             var publicador = replicaA.getBean(KafkaTemplate.class);
             var evento = new EventoPaciente(UUID.randomUUID(), "paciente_escalado", 1, Instant.now(),
                     new DatosEventoPaciente(idPaciente, "CRITICO", "REGISTRADO", "REGISTRADO", true));
             String carga = new ObjectMapper().findAndRegisterModules().writeValueAsString(evento);
             Mono<?> difusion = Mono.zip(salidaA, salidaB).doOnNext(alertas -> {
-                assertThat(alertas.getT1().idPaciente()).isEqualTo(idPaciente);
+                assertThat(alertas.getT1().data().idPaciente()).isEqualTo(idPaciente);
                 assertThat(alertas.getT2().idPaciente()).isEqualTo(idPaciente);
-                assertThat(alertas.getT1().nivel()).isEqualTo("CRITICO");
+                assertThat(alertas.getT1().data().nivel()).isEqualTo("CRITICO");
             });
             Mono<Void> envio = Mono.delay(Duration.ofSeconds(1))
                     .then(Mono.fromFuture(publicador.send("triaje.eventos", idPaciente.toString(), carga)))

@@ -8,6 +8,7 @@ import co.vidacruz.triage.vigilancia.puerto.repositorio.RepositorioEscalamiento;
 import co.vidacruz.triage.vigilancia.servicio.ServicioEscalamiento;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import reactor.core.publisher.Mono;
 
 public class ManejadorEscalarVencidos {
@@ -24,13 +25,13 @@ public class ManejadorEscalarVencidos {
         auditoria = dependencias.auditoria();
         outbox = dependencias.outbox();
         transaccion = dependencias.transaccion();
-        servicio = dependencias.servicio();
-        contador = dependencias.contador();
-        reloj = dependencias.reloj();
+        servicio = dependencias.contexto().servicio();
+        contador = dependencias.contexto().contador();
+        reloj = dependencias.contexto().reloj();
     }
 
     public Mono<Void> ejecutar(ComandoEscalarVencidos comando) {
-        Instant ahora = reloj.instant();
+        Instant ahora = reloj.instant().truncatedTo(ChronoUnit.MICROS);
         return transaccion.ejecutar(() -> repositorio.escalarVencidos(ahora)
                 .concatMap(paciente -> {
                     var cambio = servicio.crearCambio(paciente, ahora);

@@ -5,19 +5,27 @@ import io.r2dbc.spi.Row;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 public class MapeoReporteHora {
+    private static final List<NivelReporte> NIVELES = List.of(
+            new NivelReporte("CRITICO", "critico"),
+            new NivelReporte("URGENTE", "urgente"),
+            new NivelReporte("URGENTE_2", "urgente2"),
+            new NivelReporte("NO_URGENTE", "noUrgente"),
+            new NivelReporte("NO_URGENTE_2", "noUrgente2"));
+
     public DtoReporteHora mapear(Row fila, ZoneId zonaHoraria) {
         Instant hora = fila.get("hora", Instant.class);
-        var porNivel = Map.of(
-                "CRITICO", fila.get("critico", Long.class).intValue(),
-                "URGENTE", fila.get("urgente", Long.class).intValue(),
-                "URGENTE_2", fila.get("urgente2", Long.class).intValue(),
-                "NO_URGENTE", fila.get("noUrgente", Long.class).intValue(),
-                "NO_URGENTE_2", fila.get("noUrgente2", Long.class).intValue());
+        var porNivel = new LinkedHashMap<String, Integer>();
+        for (NivelReporte nivel : NIVELES) {
+            porNivel.put(nivel.llave(), fila.get(nivel.columna(), Long.class).intValue());
+        }
         return new DtoReporteHora(hora.atZone(zonaHoraria).toOffsetDateTime(),
                 fila.get("total", Long.class).intValue(), fila.get("acumulado", Long.class).intValue(), porNivel,
                 fila.get("promedio", BigDecimal.class), fila.get("p95", BigDecimal.class));
     }
+
+    private record NivelReporte(String llave, String columna) { }
 }

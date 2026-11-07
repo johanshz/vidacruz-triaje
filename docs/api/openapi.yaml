@@ -100,6 +100,7 @@ paths:
           description: Flujo SSE de alertas; el evento se llama alerta.
           content:
             text/event-stream:
+              description: Primero emite los escalados activos y luego las alertas nuevas; cada evento de datos usa el nombre alerta.
               schema:
                 type: string
               examples:

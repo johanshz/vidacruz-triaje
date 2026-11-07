@@ -8,8 +8,9 @@ import co.vidacruz.triage.paciente.modelo.entidad.EstadoPaciente;
 import co.vidacruz.triage.paciente.modelo.entidad.NivelTriage;
 import co.vidacruz.triage.paciente.modelo.entidad.Paciente;
 import co.vidacruz.triage.paciente.modelo.dto.DtoPaciente;
+import co.vidacruz.triage.comun.excepcion.ExcepcionValidacion;
 import java.time.Instant;
-import java.util.UUID;
+import java.util.Objects;
 
 public class FabricaPaciente {
     public static Paciente desde(DtoPaciente dto) {
@@ -20,15 +21,26 @@ public class FabricaPaciente {
                 dto.fechaEstado(), dto.fechaPrimeraConsulta());
     }
 
-    public Paciente registrado(DatosRegistroPaciente datos, NivelTriage nivel, int slaMinutos, UUID id, Instant ahora) {
-        DatosRegistroPaciente recortados = new DatosRegistroPaciente(datos.nombreCompleto().trim(), datos.edad(),
+    public static Paciente registrado(EntradaPacienteRegistrado entrada) {
+        Objects.requireNonNull(entrada, "entrada");
+        DatosRegistroPaciente datos = Objects.requireNonNull(entrada.datos(), "datos");
+        String nombre = textoRequerido(datos.nombreCompleto(), "nombreCompleto");
+        String queja = textoRequerido(datos.quejaPrincipal(), "quejaPrincipal");
+        DatosRegistroPaciente recortados = new DatosRegistroPaciente(nombre, datos.edad(),
                 datos.frecuenciaCardiaca(), datos.presionSistolica(), datos.presionDiastolica(), datos.spo2(),
-                datos.temperatura(), datos.dolor(), datos.gcs(), datos.quejaPrincipal().trim());
-        return new Paciente(id, recortados, nivel, slaMinutos, EstadoPaciente.REGISTRADO, false, ahora, ahora, null);
+                datos.temperatura(), datos.dolor(), datos.gcs(), queja);
+        return Paciente.registrado(entrada.id(), recortados, entrada.nivel(), entrada.slaMinutos(), entrada.ahora());
     }
 
-    public EventoPaciente eventoRegistrado(Paciente paciente, UUID idEvento, Instant ahora) {
+    public static EventoPaciente eventoRegistrado(Paciente paciente, java.util.UUID idEvento, Instant ahora) {
         return new EventoPaciente(idEvento, TipoEventoPaciente.PACIENTE_REGISTRADO.valor(), EventoPaciente.VERSION_ACTUAL, ahora,
                 new DatosEventoPaciente(paciente.id(), paciente.nivel().name(), null, paciente.estado().name(), paciente.escalado()));
+    }
+
+    private static String textoRequerido(String valor, String campo) {
+        if (valor == null) {
+            throw new ExcepcionValidacion(campo, "El campo es obligatorio");
+        }
+        return valor.trim();
     }
 }

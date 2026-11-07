@@ -60,7 +60,7 @@ class AlertasSseIntegracionTest extends SoporteIntegracionTriage {
         var alerta = new AlertaEscalamiento(id, "Paciente nuevo", "URGENTE", 2, Instant.now());
 
         StepVerifier.create(resultado.getResponseBody().filter(evento -> "alerta".equals(evento.event())).take(1))
-                .then(() -> Mono.delay(Duration.ofMillis(200)).then(adaptador.notificar(alerta)).block())
+                .then(() -> Mono.delay(Duration.ofMillis(200)).then(adaptador.notificar(alerta)).subscribe())
                 .assertNext(evento -> {
                     assertEquals("alerta", evento.event());
                     assertEquals(id, evento.data().idPaciente());

@@ -78,3 +78,5 @@ vidacruz:
     intervalo: ${VIDACRUZ_OUTBOX_INTERVALO:PT1S}
     lote: ${VIDACRUZ_OUTBOX_LOTE:100}
     timeout-envio: ${VIDACRUZ_OUTBOX_TIMEOUT_ENVIO:PT10S}
+  kafka:
+    timeout-dlt: ${VIDACRUZ_KAFKA_TIMEOUT_DLT:PT10S}

@@ -14,7 +14,6 @@ import reactor.core.publisher.Mono;
 
 public class ManejadorRegistrarPaciente {
     private final ServicioClasificacionPaciente clasificacion;
-    private final FabricaPaciente fabrica;
     private final RepositorioPaciente pacientes;
     private final RegistrarCambioPaciente registrarCambio;
     private final EjecutorTransaccion transaccion;
@@ -24,13 +23,12 @@ public class ManejadorRegistrarPaciente {
 
     public ManejadorRegistrarPaciente(DependenciasRegistroPaciente dependencias) {
         this.clasificacion = dependencias.clasificacion();
-        this.fabrica = dependencias.fabrica();
         this.pacientes = dependencias.pacientes();
         this.registrarCambio = dependencias.registrarCambio();
         this.transaccion = dependencias.transaccion();
-        this.contador = dependencias.contador();
-        this.reloj = dependencias.reloj();
-        this.configuracionSla = dependencias.configuracionSla();
+        this.contador = dependencias.contexto().contador();
+        this.reloj = dependencias.contexto().reloj();
+        this.configuracionSla = dependencias.contexto().configuracionSla();
     }
 
     public Mono<Paciente> ejecutar(ComandoRegistrarPaciente comando) {
@@ -39,8 +37,9 @@ public class ManejadorRegistrarPaciente {
             var nivel = clasificacion.clasificar(comando.datos());
             Instant ahora = reloj.instant().truncatedTo(ChronoUnit.MICROS);
             UUID id = UUID.randomUUID();
-            Paciente paciente = fabrica.registrado(comando.datos(), nivel, configuracionSla.minutos(nivel), id, ahora);
-            var evento = fabrica.eventoRegistrado(paciente, UUID.randomUUID(), ahora);
+            Paciente paciente = FabricaPaciente.registrado(new EntradaPacienteRegistrado(comando.datos(), nivel,
+                    configuracionSla.minutos(nivel), id, ahora));
+            var evento = FabricaPaciente.eventoRegistrado(paciente, UUID.randomUUID(), ahora);
             return transaccion.ejecutar(() -> pacientes.guardar(paciente)
                     .then(registrarCambio.registrar(paciente, evento, null))
                     .thenReturn(paciente)).doOnSuccess(guardado -> contador.incrementar(nivel));
