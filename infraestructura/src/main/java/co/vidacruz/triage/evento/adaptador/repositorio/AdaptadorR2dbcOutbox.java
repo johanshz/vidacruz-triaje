@@ -27,7 +27,6 @@ public class AdaptadorR2dbcOutbox implements RepositorioOutbox, CandadoPublicaci
 
     @Override
     public Mono<Void> agregar(EventoPaciente evento, String llave) {
-        // El traceparent se lee del contexto de la petición: así el evento continúa la misma traza en Kafka
         return Mono.deferContextual(contexto -> {
             String carga;
             try {

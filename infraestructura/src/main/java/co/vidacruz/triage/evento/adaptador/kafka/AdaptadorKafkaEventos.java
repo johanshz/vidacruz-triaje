@@ -33,7 +33,6 @@ public class AdaptadorKafkaEventos implements PublicadorEventos {
     private ProducerRecord<String, String> crearRegistro(EventoOutbox evento) {
         var registro = new ProducerRecord<String, String>(ConfiguracionKafka.TOPIC_EVENTOS,
                 evento.idPaciente().toString(), evento.carga());
-        // La cabecera W3C deja que el Asistente continúe la traza de la petición original (DP13)
         if (evento.traceparent() != null) {
             registro.headers().add(CABECERA_TRACEPARENT, evento.traceparent().getBytes(StandardCharsets.UTF_8));
         }

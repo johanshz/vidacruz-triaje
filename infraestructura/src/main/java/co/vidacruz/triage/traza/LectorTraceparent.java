@@ -10,10 +10,6 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 import reactor.util.context.ContextView;
 
-/**
- * Lee la traza activa de la petición (contexto de Reactor o hilo actual) y la devuelve en formato
- * W3C {@code traceparent}: {@code 00-<traceId>-<spanId>-<banderas>}.
- */
 @Component
 public class LectorTraceparent {
     private static final String VERSION = "00";
