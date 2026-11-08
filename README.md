@@ -58,29 +58,52 @@ Para la IA real, define `ANTHROPIC_API_KEY` en el entorno; sin ella el Asistente
 
 **Prueba de punta a punta** (PowerShell): `./probar-punta-a-punta.ps1` revisa los puntos principales (registro, tablero por Kafka, traza, alta, transición prohibida, reporte, IA). Con `-ProbarAlerta` agrega la alerta SSE (levantar con `VIDACRUZ_SLA_MINUTOS_CRITICO=1` y `VIDACRUZ_VIGILANCIA_INTERVALO=PT10S`).
 
-### Ejemplos
+### Probar las APIs (Postman o cURL)
+
+**Opción 1 · Postman (la más simple).** Botón **Import** y elige [`docs/postman/VidaCruz.postman_collection.json`](docs/postman/VidaCruz.postman_collection.json). Trae 12 peticiones en orden, y la primera de registro guarda sola el `id` del paciente para las siguientes. Solo completa las claves: abre la colección, pestaña **Variables**, y escribe `triage_key` y `asistente_key` (las claves de prueba están en el mensaje de entrega).
+
+**Opción 2 · cURL.** Cada comando es **una sola línea** y también se puede pegar en Postman (**Import** → **Raw text**). Cambia `<CLAVE_TRIAGE>` y `<CLAVE_ASISTENTE>` por las claves de la entrega.
+
+| | Triage | Asistente |
+|---|---|---|
+| **Azure** | `http://4.236.197.111` | `http://172.171.189.251` |
+| **Local** (`docker compose`) | `http://localhost:8081` con la clave `clave-local-triage` | `http://localhost:8082` con la clave `clave-local-asistente` |
 
 ```bash
-# Registrar un paciente
-curl -X POST http://localhost:8081/triage/pacientes -H "X-API-Key: clave-local-triage" -H "Content-Type: application/json" \
-  -d '{"nombreCompleto":"Maria Lopez","edad":34,"frecuenciaCardiaca":88,"presionSistolica":118,"presionDiastolica":76,"spo2":97,"temperatura":38.7,"dolor":4,"gcs":15,"quejaPrincipal":"Fiebre"}'
+# 1. Salud (sin clave): debe responder {"status":"UP"}
+curl http://4.236.197.111/actuator/health/readiness
 
-# Cambiar su estado
-curl -X PATCH http://localhost:8081/triage/pacientes/<id>/estado -H "X-API-Key: clave-local-triage" -H "Content-Type: application/json" -d '{"estado":"EN_CONSULTA"}'
+# 2. Registrar un paciente URGENTE: responde 201 con "id" y "nivel"
+curl -X POST http://4.236.197.111/triage/pacientes -H "X-API-Key: <CLAVE_TRIAGE>" -H "Content-Type: application/json" -d '{"nombreCompleto":"Maria Lopez","edad":34,"frecuenciaCardiaca":88,"presionSistolica":118,"presionDiastolica":76,"spo2":97,"temperatura":38.7,"dolor":4,"gcs":15,"quejaPrincipal":"Fiebre y dolor de garganta"}'
 
-# Tablero de urgencias
-curl http://localhost:8082/asistente/estado-urgencias -H "X-API-Key: clave-local-asistente"
+# 3. Consultar al paciente (usa el "id" del paso 2)
+curl http://4.236.197.111/triage/pacientes/<ID> -H "X-API-Key: <CLAVE_TRIAGE>"
 
-# Pregunta a la IA
-curl -X POST http://localhost:8082/asistente/consulta -H "X-API-Key: clave-local-asistente" -H "Content-Type: application/json" \
-  -d '{"pregunta":"¿Cómo se maneja una crisis hipertensiva?"}'
+# 4. Pasarlo a consulta, y luego a alta
+curl -X PATCH http://4.236.197.111/triage/pacientes/<ID>/estado -H "X-API-Key: <CLAVE_TRIAGE>" -H "Content-Type: application/json" -d '{"estado":"EN_CONSULTA"}'
+curl -X PATCH http://4.236.197.111/triage/pacientes/<ID>/estado -H "X-API-Key: <CLAVE_TRIAGE>" -H "Content-Type: application/json" -d '{"estado":"ALTA"}'
+
+# 5. Reporte de operación por hora
+curl "http://4.236.197.111/triage/reportes/operacion?desde=2026-11-01T00:00:00Z&hasta=2026-12-01T00:00:00Z" -H "X-API-Key: <CLAVE_TRIAGE>"
+
+# 6. Tablero de urgencias del Asistente: pacientes activos por nivel
+curl http://172.171.189.251/asistente/estado-urgencias -H "X-API-Key: <CLAVE_ASISTENTE>"
+
+# 7. Pregunta a la IA: respuesta con las fuentes (protocolo y sección)
+curl -X POST http://172.171.189.251/asistente/consulta -H "X-API-Key: <CLAVE_ASISTENTE>" -H "Content-Type: application/json" -d '{"pregunta":"Como se maneja una crisis hipertensiva?"}'
 ```
 
-### Cómo probar las alertas (RF-06)
+**Alerta en vivo (RF-06)**, en dos pasos:
 
-1. Deja escuchando: `curl -N http://localhost:8081/triage/alertas/flujo -H "X-API-Key: clave-local-triage" -H "Accept: text/event-stream"`
-2. Registra un paciente CRÍTICO y no lo pases a consulta.
-3. Al vencerse su SLA, llega `event: alerta` con el nombre, el nivel y los minutos de espera.
+```bash
+# A. Deja esta conexión abierta (es SSE: el servidor te empuja cada alerta)
+curl -N http://4.236.197.111/triage/alertas/flujo -H "X-API-Key: <CLAVE_TRIAGE>" -H "Accept: text/event-stream"
+
+# B. En otra ventana, registra un paciente CRÍTICO y no lo pases a consulta
+curl -X POST http://4.236.197.111/triage/pacientes -H "X-API-Key: <CLAVE_TRIAGE>" -H "Content-Type: application/json" -d '{"nombreCompleto":"Luis Perez","edad":60,"frecuenciaCardiaca":90,"presionSistolica":120,"presionDiastolica":80,"spo2":97,"temperatura":36.8,"dolor":2,"gcs":7,"quejaPrincipal":"Perdida de conciencia"}'
+```
+
+El plazo del paciente crítico es de 5 minutos: pasado ese tiempo (y hasta 30 segundos más, lo que tarda el vigilante en revisar) llega `event: alerta` con el nombre, el nivel y los minutos de espera. En Windows usa Postman, o `curl.exe` desde PowerShell con archivos de datos.
 
 ---
 
@@ -223,9 +246,43 @@ $env:VIDACRUZ_DB_PASSWORD = "..."; $env:VIDACRUZ_TRIAGE_API_KEY = "..."; $env:VI
 
 ---
 
-## Desarrollo asistido por IA
+## Workspace de desarrollo con IA (`WORKSPACE_IA`)
 
-El sistema se construyó con un flujo de agentes de IA dirigido y verificado por el autor: especificación por entregas (RFC), desarrollo, revisión de código, QA contra la API real y ciclos de corrección. Las especificaciones e informes quedan en `*/specs-personal/` y `*/informes/` como evidencia del proceso. Las pruebas en vivo encontraron fallas que las automáticas no veían (configuración de Kafka de un solo broker, parámetros del modelo, formato de la respuesta de la IA, propagación de la traza), todas corregidas con su prueba.
+> Workspace diseñado e implementado por **Johan Fernando Sanchez Cano**, ingeniero de software de IA.
+
+**Qué es.** Un entorno de trabajo propio, en un repositorio aparte, donde dos asistentes de IA con roles distintos construyen software bajo la dirección del autor. Se pasan el trabajo **solo por archivos**, nunca por memoria de conversación; por eso todo queda como evidencia.
+
+| Herramienta | Rol | Qué produce |
+|---|---|---|
+| Claude Code | Pensar: arquitectura, especificaciones (RFC), documentación y revisión contra el RFC | contexto del proyecto, `rfc-activo.md`, documentación, informes de QA contra el RFC |
+| Codex | Construir: plan, código, pruebas, revisión de código y QA de APIs | el código, `specs-personal/`, informes y observaciones |
+
+**Cómo está construido**
+
+- **Una carpeta por proyecto** con siempre la misma forma: ficha y reglas, `ESTADO.md` (bitácora de dónde va), `contexto/` (negocio, arquitectura y decisiones), `desarrollo-ia/<servicio>/` (RFC, informes y observaciones), `codigo/<servicio>/` (un repositorio git por servicio) y `docs/`.
+- **12 skills de Claude Code y 56 de Codex** (por stack: Java, Python y Angular). Cubren crear el proyecto, decidir la arquitectura, escribir el RFC, planear, construir, probar, revisar código, hacer QA, corregir, refactorizar y documentar.
+- **Subagentes especializados** (13 de Codex y 2 de Claude Code), cada uno con una sola mirada: arquitectura hexagonal, Java reactivo moderno, código limpio, QA destructivo contra la API real y trazabilidad contra el RFC. Solo reportan; no modifican código.
+- **Un orquestador en Python** (`orquestador.py`, `desarrollo.py`, `fix.py`, `refactor.py`) que corre una entrega completa: llama a Claude y a Codex, guarda el estado en JSON, consulta a un agente "copiloto" y solo escala al autor lo que únicamente él puede decidir. Dos corridas pueden ir en paralelo (carriles).
+- **Una plantilla de proyecto y scripts de PowerShell** que crean cada proyecto con su estructura y su ficha.
+
+**El ciclo de una entrega**
+
+```
+idea → proyecto → arquitectura → RFC → plan → verificación del plan contra el RFC
+     → construcción → pruebas → revisión de código y QA → informe → siguiente RFC
+```
+
+Tras cada entrega hay dos ciclos más: **corrección** (fixes puntuales) y **refactor** (cambia la estructura sin cambiar el comportamiento).
+
+**Reglas que no se rompen**
+
+1. **El RFC es la ley.** Nada se construye ni se aprueba si no está en el RFC, y solo el autor puede cambiarlo.
+2. **No inventar.** Sin fuente no existe: lo de negocio se pregunta; lo técnico se decide dentro de la arquitectura documentada.
+3. **Secretos:** las claves nunca se leen, imprimen ni guardan; solo se usan nombres de variables de entorno.
+4. **Sin commit ni push** sin que el autor lo pida.
+5. **Cierre de toda tarea:** un informe con estado y lo que faltó, la bitácora en `ESTADO.md` y los documentos vivos al día.
+
+**Cómo se usó en esta prueba.** El trabajo se partió en entregas (RFC) por servicio y cada una pasó por el ciclo anterior. Las especificaciones y los informes quedan en `*/specs-personal/` y `*/informes/` como evidencia del proceso. El flujo está dirigido y verificado por el autor: las pruebas en vivo encontraron fallas que las automáticas no veían (configuración de Kafka de un solo broker, parámetros del modelo, formato de la respuesta de la IA, propagación de la traza), todas corregidas con su prueba.
 
 ---
 
@@ -246,5 +303,7 @@ asistente/       servicio Asistente (misma estructura)
 deploy/k8s/      manifiestos de Kubernetes
 deploy/azure/    scripts de imágenes, despliegue y apagado
 docs/adr/        decisiones de arquitectura
+docs/postman/    colección de Postman con las 12 peticiones
+docs/api/        OpenAPI del Asistente
 docker-compose.yml, variables.ejemplo, probar-punta-a-punta.ps1
 ```

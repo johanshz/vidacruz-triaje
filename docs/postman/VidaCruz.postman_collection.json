@@ -1,0 +1,273 @@
+{
+  "info": {
+    "name": "VidaCruz (Triage y Asistente)",
+    "description": "Importa este archivo en Postman. Completa triage_key y asistente_key en la pestaña Variables de la colección. Por defecto apunta a Azure; para local usa http://localhost:8081 y http://localhost:8082 con las claves clave-local-triage y clave-local-asistente.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "triage_url",
+      "value": "http://4.236.197.111"
+    },
+    {
+      "key": "asistente_url",
+      "value": "http://172.171.189.251"
+    },
+    {
+      "key": "triage_key",
+      "value": ""
+    },
+    {
+      "key": "asistente_key",
+      "value": ""
+    },
+    {
+      "key": "id_paciente",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Salud del Triage (sin clave)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{triage_url}}/actuator/health/readiness"
+      }
+    },
+    {
+      "name": "2. Salud del Asistente (sin clave)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{asistente_url}}/actuator/health/readiness"
+      }
+    },
+    {
+      "name": "3. Registrar paciente URGENTE (guarda el id)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{triage_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{triage_url}}/triage/pacientes",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombreCompleto\": \"Maria Lopez\",\n  \"edad\": 34,\n  \"frecuenciaCardiaca\": 88,\n  \"presionSistolica\": 118,\n  \"presionDiastolica\": 76,\n  \"spo2\": 97,\n  \"temperatura\": 38.7,\n  \"dolor\": 4,\n  \"gcs\": 15,\n  \"quejaPrincipal\": \"Fiebre y dolor de garganta\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Responde 201 con nivel URGENTE. El id queda guardado para las peticiones 5, 6 y 7."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('id_paciente', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Registrar paciente CRITICO (para ver la alerta)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{triage_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{triage_url}}/triage/pacientes",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombreCompleto\": \"Luis Perez\",\n  \"edad\": 60,\n  \"frecuenciaCardiaca\": 90,\n  \"presionSistolica\": 120,\n  \"presionDiastolica\": 80,\n  \"spo2\": 97,\n  \"temperatura\": 36.8,\n  \"dolor\": 2,\n  \"gcs\": 7,\n  \"quejaPrincipal\": \"Perdida de conciencia\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Nivel CRITICO. Si no se atiende en 5 minutos, llega una alerta por la petición 10."
+      }
+    },
+    {
+      "name": "5. Consultar el paciente guardado",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{triage_key}}"
+          }
+        ],
+        "url": "{{triage_url}}/triage/pacientes/{{id_paciente}}"
+      }
+    },
+    {
+      "name": "6. Pasar a EN_CONSULTA",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{triage_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{triage_url}}/triage/pacientes/{{id_paciente}}/estado",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"estado\": \"EN_CONSULTA\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "7. Dar de ALTA",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{triage_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{triage_url}}/triage/pacientes/{{id_paciente}}/estado",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"estado\": \"ALTA\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "8. Reporte de operacion por hora",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{triage_key}}"
+          }
+        ],
+        "url": "{{triage_url}}/triage/reportes/operacion?desde=2026-11-01T00:00:00Z&hasta=2026-12-01T00:00:00Z"
+      }
+    },
+    {
+      "name": "9. Tablero de urgencias (Asistente)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{asistente_key}}"
+          }
+        ],
+        "url": "{{asistente_url}}/asistente/estado-urgencias"
+      }
+    },
+    {
+      "name": "10. Alertas en vivo (SSE)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{triage_key}}"
+          },
+          {
+            "key": "Accept",
+            "value": "text/event-stream"
+          }
+        ],
+        "url": "{{triage_url}}/triage/alertas/flujo",
+        "description": "La conexión queda abierta; cada alerta de escalamiento llega como evento. Registra un paciente CRITICO (petición 4) y espera 5 a 6 minutos."
+      }
+    },
+    {
+      "name": "11. Pregunta a la IA (con protocolo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{asistente_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{asistente_url}}/asistente/consulta",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"pregunta\": \"¿Cómo se maneja una crisis hipertensiva?\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "12. Pregunta sin protocolo (no llama a la IA)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-API-Key",
+            "value": "{{asistente_key}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{asistente_url}}/asistente/consulta",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"pregunta\": \"¿Cuál es la primera línea en diabetes tipo 2?\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
