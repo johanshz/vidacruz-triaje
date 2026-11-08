@@ -1,0 +1,92 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${DB_NAME:?Define DB_NAME en .env}
+      POSTGRES_USER: ${DB_USER:?Define DB_USER en .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+    ports:
+      - "${DB_PORT_HOST:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  kafka:
+    image: apache/kafka:4.1.0
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:19092,EXTERNAL://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:19092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # Un solo broker: sin esto __consumer_offsets pide 3 réplicas, nunca se crea y ningún consumidor recibe mensajes
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:19092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  triage:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:?Define DB_NAME en .env}
+      DB_USER: ${DB_USER:?Define DB_USER en .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+      TRIAGE_API_KEY: ${TRIAGE_API_KEY:?Define TRIAGE_API_KEY en .env}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+      VIDACRUZ_OUTBOX_INTERVALO: ${VIDACRUZ_OUTBOX_INTERVALO:-PT1S}
+      VIDACRUZ_OUTBOX_LOTE: ${VIDACRUZ_OUTBOX_LOTE:-100}
+      VIDACRUZ_OUTBOX_TIMEOUT_ENVIO: ${VIDACRUZ_OUTBOX_TIMEOUT_ENVIO:-PT10S}
+      VIDACRUZ_SLA_MINUTOS_CRITICO: ${VIDACRUZ_SLA_MINUTOS_CRITICO:-5}
+      VIDACRUZ_SLA_MINUTOS_URGENTE: ${VIDACRUZ_SLA_MINUTOS_URGENTE:-10}
+      VIDACRUZ_SLA_MINUTOS_URGENTE_2: ${VIDACRUZ_SLA_MINUTOS_URGENTE_2:-30}
+      VIDACRUZ_SLA_MINUTOS_NO_URGENTE: ${VIDACRUZ_SLA_MINUTOS_NO_URGENTE:-60}
+      VIDACRUZ_SLA_MINUTOS_NO_URGENTE_2: ${VIDACRUZ_SLA_MINUTOS_NO_URGENTE_2:-120}
+      VIDACRUZ_VIGILANCIA_INTERVALO: ${VIDACRUZ_VIGILANCIA_INTERVALO:-PT30S}
+      VIDACRUZ_INSTANCIA: ${VIDACRUZ_INSTANCIA:-}
+      VIDACRUZ_REPORTE_ZONA_HORARIA: ${VIDACRUZ_REPORTE_ZONA_HORARIA:-America/Bogota}
+    ports:
+      - "8081:8080"
+
+volumes:
+  postgres-data:
+  kafka-data:
+  redis-data:

@@ -1,0 +1,7 @@
+.env
+.git
+.gradle
+**/build
+.gradle-home
+.gradle-cache/
+.gradle-tmp/

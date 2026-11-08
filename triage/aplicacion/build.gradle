@@ -1,0 +1,7 @@
+plugins { id 'java-library' }
+dependencies {
+    implementation project(':dominio')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+    testImplementation 'io.projectreactor:reactor-test'
+}

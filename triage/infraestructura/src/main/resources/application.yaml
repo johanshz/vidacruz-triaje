@@ -1,0 +1,82 @@
+server:
+  port: ${SERVER_PORT:8080}
+spring:
+  application:
+    name: triage
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  flyway:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
+    user: ${DB_USER}
+    password: ${DB_PASSWORD}
+    locations: classpath:db/migration
+  reactor:
+    context-propagation: auto
+  jackson:
+    deserialization:
+      accept-float-as-int: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 5000
+        max.block.ms: 5000
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      liveness:
+        enabled: true
+      readiness:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,r2dbc
+  health:
+    defaults:
+      enabled: true
+    r2dbc:
+      enabled: true
+logging:
+  structured:
+    format:
+      console: ecs
+vidacruz:
+  sla:
+    minutos:
+      critico: ${VIDACRUZ_SLA_MINUTOS_CRITICO:5}
+      urgente: ${VIDACRUZ_SLA_MINUTOS_URGENTE:10}
+      urgente-2: ${VIDACRUZ_SLA_MINUTOS_URGENTE_2:30}
+      no-urgente: ${VIDACRUZ_SLA_MINUTOS_NO_URGENTE:60}
+      no-urgente-2: ${VIDACRUZ_SLA_MINUTOS_NO_URGENTE_2:120}
+  vigilancia:
+    intervalo: ${VIDACRUZ_VIGILANCIA_INTERVALO:PT30S}
+  instancia: ${VIDACRUZ_INSTANCIA:${random.uuid}}
+  reporte:
+    zona-horaria: ${VIDACRUZ_REPORTE_ZONA_HORARIA:America/Bogota}
+  seguridad:
+    api-key: ${TRIAGE_API_KEY}
+  outbox:
+    intervalo: ${VIDACRUZ_OUTBOX_INTERVALO:PT1S}
+    lote: ${VIDACRUZ_OUTBOX_LOTE:100}
+    timeout-envio: ${VIDACRUZ_OUTBOX_TIMEOUT_ENVIO:PT10S}
+  kafka:
+    timeout-dlt: ${VIDACRUZ_KAFKA_TIMEOUT_DLT:PT10S}
