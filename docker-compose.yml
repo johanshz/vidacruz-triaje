@@ -1,0 +1,130 @@
+# VidaCruz completo: Triage + Asistente con UN solo Kafka, PostgreSQL y Redis.
+# Es la misma forma que tiene el despliegue en AKS (deploy/k8s).
+#
+# Uso (desde la raíz del repositorio):
+#   Copy-Item variables.ejemplo .env   # valores de prueba; ANTHROPIC_API_KEY es opcional
+#   docker compose up -d --build
+#   ./probar-punta-a-punta.ps1
+name: vidacruz
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${DB_NAME:?Define DB_NAME en .env}
+      POSTGRES_USER: ${DB_USER:?Define DB_USER en .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  kafka:
+    image: apache/kafka:4.1.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # Un solo broker: sin esto __consumer_offsets pide 3 réplicas y ningún consumidor recibe mensajes
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+
+  # Crea los topics antes de arrancar los servicios (3 particiones, como en AKS)
+  topic-init:
+    image: apache/kafka:4.1.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic triaje.eventos --partitions 3 --replication-factor 1 &&
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic triaje.eventos.DLT --partitions 3 --replication-factor 1
+    restart: "no"
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  triage:
+    build:
+      context: ./triage
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      topic-init:
+        condition: service_completed_successfully
+    environment:
+      SERVER_PORT: 8080
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      TRIAGE_API_KEY: ${TRIAGE_API_KEY:?Define TRIAGE_API_KEY en .env}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      VIDACRUZ_SLA_MINUTOS_CRITICO: ${VIDACRUZ_SLA_MINUTOS_CRITICO:-5}
+      VIDACRUZ_SLA_MINUTOS_URGENTE: ${VIDACRUZ_SLA_MINUTOS_URGENTE:-10}
+      VIDACRUZ_SLA_MINUTOS_URGENTE_2: ${VIDACRUZ_SLA_MINUTOS_URGENTE_2:-30}
+      VIDACRUZ_SLA_MINUTOS_NO_URGENTE: ${VIDACRUZ_SLA_MINUTOS_NO_URGENTE:-60}
+      VIDACRUZ_SLA_MINUTOS_NO_URGENTE_2: ${VIDACRUZ_SLA_MINUTOS_NO_URGENTE_2:-120}
+      VIDACRUZ_VIGILANCIA_INTERVALO: ${VIDACRUZ_VIGILANCIA_INTERVALO:-PT30S}
+      VIDACRUZ_REPORTE_ZONA_HORARIA: ${VIDACRUZ_REPORTE_ZONA_HORARIA:-America/Bogota}
+    ports:
+      - "8081:8080"
+
+  asistente:
+    build:
+      context: ./asistente
+      dockerfile: Dockerfile
+    depends_on:
+      redis:
+        condition: service_healthy
+      topic-init:
+        condition: service_completed_successfully
+    environment:
+      SERVER_PORT: 8080
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ASISTENTE_API_KEY: ${ASISTENTE_API_KEY:?Define ASISTENTE_API_KEY en .env}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ASISTENTE_MODELO: ${ASISTENTE_MODELO:-claude-sonnet-5-5}
+      ASISTENTE_UMBRAL_SIMILITUD: ${ASISTENTE_UMBRAL_SIMILITUD:-0.55}
+    ports:
+      - "8082:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+
+volumes:
+  postgres-data:
+  kafka-data:
+  redis-data:

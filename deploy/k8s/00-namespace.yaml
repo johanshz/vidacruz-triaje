@@ -1,0 +1,5 @@
+# Todo VidaCruz vive en su propio espacio dentro del clúster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vidacruz

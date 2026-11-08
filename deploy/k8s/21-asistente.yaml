@@ -1,0 +1,58 @@
+# Asistente: 1 réplica. Necesita más memoria por el modelo ONNX y PyTorch para los embeddings.
+apiVersion: v1
+kind: Service
+metadata:
+  name: asistente
+  namespace: vidacruz
+spec:
+  type: LoadBalancer
+  selector:
+    app: asistente
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asistente
+  namespace: vidacruz
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: asistente
+  template:
+    metadata:
+      labels:
+        app: asistente
+    spec:
+      containers:
+        - name: asistente
+          image: IMAGEN_ASISTENTE
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: vidacruz-configuracion
+          env:
+            - { name: SERVER_PORT, value: "8080" }
+            - name: ASISTENTE_API_KEY
+              valueFrom: { secretKeyRef: { name: vidacruz-secretos, key: ASISTENTE_API_KEY } }
+            - name: ANTHROPIC_API_KEY
+              valueFrom: { secretKeyRef: { name: vidacruz-secretos, key: ANTHROPIC_API_KEY, optional: true } }
+          # Arrancar carga el modelo e indexa los protocolos: se le da hasta 3 minutos
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 5
+            failureThreshold: 36
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 250m, memory: 1Gi }
+            limits: { memory: 2Gi }

@@ -1,0 +1,13 @@
+# Copia este archivo como ".env" en esta misma carpeta (Copy-Item variables.ejemplo .env).
+# Valores de PRUEBA para docker compose local. No pongas claves reales aquí.
+DB_NAME=triage
+DB_USER=triage
+DB_PASSWORD=cambia-esta-clave-local
+TRIAGE_API_KEY=clave-local-triage
+ASISTENTE_API_KEY=clave-local-asistente
+# Opcional: sin ella el Asistente arranca y solo la consulta con IA responde 503.
+# Mejor como variable de entorno del sistema que escrita aquí.
+ANTHROPIC_API_KEY=
+# Para probar el escalamiento rápido (minutos y duración ISO-8601)
+VIDACRUZ_SLA_MINUTOS_CRITICO=5
+VIDACRUZ_VIGILANCIA_INTERVALO=PT30S

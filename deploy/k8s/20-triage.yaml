@@ -1,0 +1,70 @@
+# Triage: 2 réplicas, para demostrar que el escalamiento y el outbox funcionan con varias copias.
+# Service LoadBalancer = Azure le da una IP pública (la URL de la prueba).
+apiVersion: v1
+kind: Service
+metadata:
+  name: triage
+  namespace: vidacruz
+spec:
+  type: LoadBalancer
+  selector:
+    app: triage
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: triage
+  namespace: vidacruz
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: triage
+  template:
+    metadata:
+      labels:
+        app: triage
+    spec:
+      initContainers:
+        # Espera a que PostgreSQL acepte conexiones; sin esto Flyway falla al arrancar y el pod se reinicia
+        - name: esperar-postgres
+          image: postgres:16
+          command: ["sh", "-c", "until pg_isready -h postgres -p 5432; do echo esperando postgres; sleep 3; done"]
+      containers:
+        - name: triage
+          image: IMAGEN_TRIAGE
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: vidacruz-configuracion
+          env:
+            - { name: SERVER_PORT, value: "8080" }
+            - name: DB_NAME
+              valueFrom: { secretKeyRef: { name: vidacruz-secretos, key: DB_NAME } }
+            - name: DB_USER
+              valueFrom: { secretKeyRef: { name: vidacruz-secretos, key: DB_USER } }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: vidacruz-secretos, key: DB_PASSWORD } }
+            - name: TRIAGE_API_KEY
+              valueFrom: { secretKeyRef: { name: vidacruz-secretos, key: TRIAGE_API_KEY } }
+            # Cada réplica con su nombre: así cada una tiene su propio grupo de Kafka para las alertas SSE
+            - name: VIDACRUZ_INSTANCIA
+              valueFrom: { fieldRef: { fieldPath: metadata.name } }
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 5
+            failureThreshold: 36
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 200m, memory: 384Mi }
+            limits: { memory: 768Mi }

@@ -1,0 +1,406 @@
+openapi: 3.1.0
+info:
+  title: API del Asistente VidaCruz
+  version: 1.0.0
+  summary: Consulta de protocolos clínicos, estado de urgencias y endpoints operativos.
+  description: >-
+    Documenta las rutas HTTP configuradas e implementadas por el Asistente en la
+    filas 3 y 4 del Asistente.
+servers:
+  - url: http://localhost:8080
+    description: Ejecución local del servicio (puerto predeterminado; configurable con SERVER_PORT).
+tags:
+  - name: Urgencias
+    description: Vista agregada de pacientes activos mantenida por el Asistente.
+  - name: Protocolos
+    description: Consulta de protocolos clínicos con recuperación aumentada por generación.
+  - name: Operación
+    description: Salud, información y métricas del servicio.
+paths:
+  /asistente/consulta:
+    post:
+      operationId: consultarProtocolo
+      summary: Consultar protocolos clínicos
+      description: >-
+        Busca fragmentos pertinentes en el corpus. Si no hay cobertura o la respuesta
+        generada no supera las barreras de calidad, devuelve el aviso fijo sin fuentes.
+      tags: [Protocolos]
+      security:
+        - ApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitudConsultaProtocolo'
+            example:
+              pregunta: ¿Qué medidas iniciales se deben tomar?
+      responses:
+        '200':
+          description: Respuesta del protocolo o aviso fijo cuando no hay cobertura suficiente.
+          headers:
+            X-Trace-Id:
+              $ref: '#/components/headers/XTraceId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespuestaConsultaProtocolo'
+              examples:
+                conFuentes:
+                  value:
+                    respuesta: Aplicar las medidas iniciales descritas en el protocolo.
+                    fuentes:
+                      - protocolo: PROTO-001
+                        seccion: Medidas iniciales
+                sinCobertura:
+                  value:
+                    respuesta: No existe un protocolo disponible para esta pregunta
+                    fuentes: []
+        '400':
+          $ref: '#/components/responses/SolicitudInvalida'
+        '401':
+          $ref: '#/components/responses/NoAutorizado'
+        '503':
+          description: El proveedor de IA no está disponible, el circuito está abierto o se agotó el tiempo límite.
+          headers:
+            X-Trace-Id:
+              $ref: '#/components/headers/XTraceId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+              example:
+                type: about:blank
+                title: Service Unavailable
+                status: 503
+                detail: El servicio de IA no está disponible
+                codigo: IA_NO_DISPONIBLE
+                traceId: 4bf92f3577b34da6a3ce929d0e0e4736
+        default:
+          $ref: '#/components/responses/ErrorInesperado'
+  /asistente/estado-urgencias:
+    get:
+      operationId: consultarEstadoUrgencias
+      summary: Consultar el estado agregado de urgencias
+      tags: [Urgencias]
+      security:
+        - ApiKey: []
+      responses:
+        '200':
+          description: Conteo de pacientes activos por nivel de urgencia.
+          headers:
+            X-Trace-Id:
+              $ref: '#/components/headers/XTraceId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadoUrgencias'
+              example:
+                totalActivos: 7
+                porNivel:
+                  CRITICO: 1
+                  URGENTE: 2
+                  URGENTE_2: 0
+                  NO_URGENTE: 3
+                  NO_URGENTE_2: 1
+                consultadoEn: '2026-11-08T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/NoAutorizado'
+        '503':
+          description: Redis no está disponible para consultar la vista.
+          headers:
+            X-Trace-Id:
+              $ref: '#/components/headers/XTraceId'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problema'
+              example:
+                type: about:blank
+                title: Service Unavailable
+                status: 503
+                detail: La vista de urgencias no está disponible
+                codigo: URGENCIAS_NO_DISPONIBLE
+                traceId: 4bf92f3577b34da6a3ce929d0e0e4736
+        default:
+          $ref: '#/components/responses/ErrorInesperado'
+  /actuator/health:
+    get:
+      operationId: consultarSalud
+      summary: Consultar salud general del servicio
+      tags: [Operación]
+      security: []
+      responses:
+        '200':
+          description: Estado general de salud, sin detalles de componentes.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: '#/components/schemas/EstadoSalud'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadoSalud'
+        default:
+          description: Error del endpoint de salud.
+  /actuator/health/liveness:
+    get:
+      operationId: consultarLiveness
+      summary: Consultar la sonda de vida
+      tags: [Operación]
+      security: []
+      responses:
+        '200':
+          description: La aplicación está viva.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: '#/components/schemas/EstadoSalud'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadoSalud'
+        '503':
+          description: La aplicación no está viva.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: '#/components/schemas/EstadoSalud'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadoSalud'
+        default:
+          description: Error del endpoint de sonda.
+  /actuator/health/readiness:
+    get:
+      operationId: consultarReadiness
+      summary: Consultar la sonda de disponibilidad
+      tags: [Operación]
+      security: []
+      responses:
+        '200':
+          description: La aplicación está disponible para recibir tráfico.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: '#/components/schemas/EstadoSalud'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadoSalud'
+        '503':
+          description: La aplicación no está disponible.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: '#/components/schemas/EstadoSalud'
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadoSalud'
+        default:
+          description: Error del endpoint de sonda.
+  /actuator/info:
+    get:
+      operationId: consultarInformacionServicio
+      summary: Consultar información del servicio
+      tags: [Operación]
+      security:
+        - ApiKey: []
+      responses:
+        '200':
+          description: Información configurada del servicio; puede estar vacía.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                type: object
+                additionalProperties: true
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          $ref: '#/components/responses/NoAutorizado'
+        default:
+          $ref: '#/components/responses/ErrorInesperado'
+  /actuator/prometheus:
+    get:
+      operationId: consultarMetricasPrometheus
+      summary: Obtener métricas en formato Prometheus
+      tags: [Operación]
+      security:
+        - ApiKey: []
+      responses:
+        '200':
+          description: Métricas del proceso en formato de exposición Prometheus.
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/NoAutorizado'
+        default:
+          $ref: '#/components/responses/ErrorInesperado'
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Credencial configurada mediante ASISTENTE_API_KEY.
+  headers:
+    XTraceId:
+      description: Identificador de traza de la petición.
+      schema:
+        type: string
+  schemas:
+    SolicitudConsultaProtocolo:
+      type: object
+      required: [pregunta]
+      properties:
+        pregunta:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Texto de la consulta; los espacios en los extremos se recortan antes de validar.
+          example: ¿Qué medidas iniciales se deben tomar?
+      additionalProperties: false
+    RespuestaConsultaProtocolo:
+      type: object
+      required: [respuesta, fuentes]
+      properties:
+        respuesta:
+          type: string
+        fuentes:
+          type: array
+          items:
+            $ref: '#/components/schemas/FuenteProtocolo'
+      additionalProperties: false
+    FuenteProtocolo:
+      type: object
+      required: [protocolo, seccion]
+      properties:
+        protocolo:
+          type: string
+          example: PROTO-001
+        seccion:
+          type: string
+          example: Medidas iniciales
+      additionalProperties: false
+    EstadoUrgencias:
+      type: object
+      required: [totalActivos, porNivel, consultadoEn]
+      properties:
+        totalActivos:
+          type: integer
+          format: int64
+          minimum: 0
+        porNivel:
+          type: object
+          required: [CRITICO, URGENTE, URGENTE_2, NO_URGENTE, NO_URGENTE_2]
+          properties:
+            CRITICO:
+              type: integer
+              format: int64
+              minimum: 0
+            URGENTE:
+              type: integer
+              format: int64
+              minimum: 0
+            URGENTE_2:
+              type: integer
+              format: int64
+              minimum: 0
+            NO_URGENTE:
+              type: integer
+              format: int64
+              minimum: 0
+            NO_URGENTE_2:
+              type: integer
+              format: int64
+              minimum: 0
+          additionalProperties: false
+        consultadoEn:
+          type: string
+          format: date-time
+    EstadoSalud:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN, OUT_OF_SERVICE, UNKNOWN]
+        components:
+          type: object
+          additionalProperties: true
+        groups:
+          type: array
+          items:
+            type: string
+      additionalProperties: true
+    Problema:
+      type: object
+      required: [type, title, status, detail, codigo, traceId]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        codigo:
+          type: string
+        campo:
+          type: [string, 'null']
+        traceId:
+          type: string
+      additionalProperties: true
+  responses:
+    SolicitudInvalida:
+      description: Cuerpo ausente o inválido, o pregunta fuera del rango de 3 a 500 caracteres.
+      headers:
+        X-Trace-Id:
+          $ref: '#/components/headers/XTraceId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: about:blank
+            title: Bad Request
+            status: 400
+            detail: La solicitud no es válida
+            codigo: VALIDACION
+            campo: pregunta
+            traceId: 4bf92f3577b34da6a3ce929d0e0e4736
+    NoAutorizado:
+      description: Falta la cabecera X-API-Key o su valor no es válido.
+      headers:
+        X-Trace-Id:
+          $ref: '#/components/headers/XTraceId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: about:blank
+            title: Unauthorized
+            status: 401
+            detail: API key ausente o inválida
+            codigo: NO_AUTORIZADO
+            traceId: 4bf92f3577b34da6a3ce929d0e0e4736
+    ErrorInesperado:
+      description: Error inesperado del servicio.
+      headers:
+        X-Trace-Id:
+          $ref: '#/components/headers/XTraceId'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problema'
+          example:
+            type: about:blank
+            title: Internal Server Error
+            status: 500
+            detail: Ocurrió un error interno
+            codigo: ERROR_INTERNO
+            traceId: 4bf92f3577b34da6a3ce929d0e0e4736

@@ -1,0 +1,20 @@
+# Trabajo de una sola vez: crea los topics con 3 particiones (como topic-init en docker-compose).
+# Si Kafka todavía no está listo, Kubernetes lo reintenta (backoffLimit).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: crear-topics
+  namespace: vidacruz
+spec:
+  backoffLimit: 20
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: crear-topics
+          image: apache/kafka:4.1.0
+          command: ["/bin/sh", "-c"]
+          args:
+            - >-
+              /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic triaje.eventos --partitions 3 --replication-factor 1 &&
+              /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic triaje.eventos.DLT --partitions 3 --replication-factor 1
