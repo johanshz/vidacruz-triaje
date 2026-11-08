@@ -9,7 +9,7 @@ Container Apps, y una URL pública con las APIs. Presupuesto: cuenta gratis de 2
 días. Prioridad: simplicidad.
 
 ## Decisión
-- **AKS, nivel gratis** (sin costo de plano de control), **1 nodo `Standard_B2ms`** (2 vCPU, 8 GB).
+- **AKS, nivel gratis** (sin costo de plano de control), **1 nodo `Standard_D2s_v4`** (2 vCPU, 8 GB).
 - Namespace `vidacruz`: Triage (2 réplicas, para demostrar la idempotencia), Asistente (1),
   PostgreSQL (StatefulSet con disco), Kafka `apache/kafka` en modo KRaft (StatefulSet, 1 nodo),
   Redis (Deployment).

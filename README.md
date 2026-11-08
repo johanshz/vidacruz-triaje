@@ -9,7 +9,7 @@ Se comunican **solo por Kafka**.
 
 El Triage **nunca llama al Asistente** (ni por HTTP ni de ninguna otra forma) y no depende de que esté disponible: si el Asistente, Redis o la IA fallan, el registro de pacientes sigue funcionando. El circuit breaker protege la llamada del Asistente al proveedor de IA y vive en el Asistente.
 
-**URL en Azure:** _se completa al desplegar_ (ver [Despliegue en Azure](#despliegue-en-azure)).
+**URL en Azure:** Triage <http://4.236.197.111> · Asistente <http://172.171.189.251> (las rutas piden `X-API-Key`; ver [APIs](#apis) y [Despliegue en Azure](#despliegue-en-azure)).
 
 ---
 
@@ -206,7 +206,7 @@ Unitarias, de integración con **Testcontainers** (PostgreSQL, Kafka y Redis rea
 
 ## Despliegue en Azure
 
-AKS nivel gratis, 1 nodo `Standard_B2ms`, namespace `vidacruz`. Manifiestos en [`deploy/k8s/`](deploy/k8s/) y scripts en [`deploy/azure/`](deploy/azure/):
+AKS nivel gratis, 1 nodo `Standard_D2s_v4`, namespace `vidacruz`. Manifiestos en [`deploy/k8s/`](deploy/k8s/) y scripts en [`deploy/azure/`](deploy/azure/):
 
 ```powershell
 docker login ghcr.io -u <usuario>                              # token de GitHub con write:packages
