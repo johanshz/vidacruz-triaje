@@ -10,7 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import co.vidacruz.asistente.configuracion.ManejadorGlobalErrores;
-import co.vidacruz.asistente.protocolo.comando.ManejadorConsultarProtocolo;
+import co.vidacruz.asistente.protocolo.comando.manejador.ManejadorConsultarProtocolo;
 import co.vidacruz.asistente.protocolo.excepcion.ExcepcionIaNoDisponible;
 import co.vidacruz.asistente.protocolo.modelo.dto.RespuestaConsulta;
 import co.vidacruz.asistente.protocolo.modelo.dto.ResultadoConsulta;

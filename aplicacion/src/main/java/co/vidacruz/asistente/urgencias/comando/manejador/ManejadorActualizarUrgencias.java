@@ -1,5 +1,6 @@
-package co.vidacruz.asistente.urgencias.comando;
+package co.vidacruz.asistente.urgencias.comando.manejador;
 
+import co.vidacruz.asistente.urgencias.comando.ComandoActualizarUrgencias;
 import co.vidacruz.asistente.urgencias.servicio.ServicioActualizarUrgencias;
 import reactor.core.publisher.Mono;
 

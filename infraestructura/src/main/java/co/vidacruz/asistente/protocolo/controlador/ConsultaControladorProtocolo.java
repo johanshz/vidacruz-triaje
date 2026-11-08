@@ -1,6 +1,6 @@
 package co.vidacruz.asistente.protocolo.controlador;
 
-import co.vidacruz.asistente.protocolo.comando.ManejadorConsultarProtocolo;
+import co.vidacruz.asistente.protocolo.comando.manejador.ManejadorConsultarProtocolo;
 import co.vidacruz.asistente.protocolo.excepcion.ExcepcionIaNoDisponible;
 import co.vidacruz.asistente.protocolo.modelo.dto.RespuestaConsulta;
 import co.vidacruz.asistente.protocolo.modelo.dto.ResultadoConsulta;

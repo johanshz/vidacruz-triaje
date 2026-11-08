@@ -18,7 +18,7 @@
 | GET `/actuator/prometheus` | Métricas protegidas | plataforma-asistente.md | MODIFICADO |
 
 ## Paradigma y stack
-Java 21, Spring Boot 3.5.16, Gradle 9.2.1. Paradigma reactivo con Spring WebFlux y Spring Data Redis reactivo; Kafka con Spring Kafka. Sin base relacional. Estructura hexagonal + CQRS de Ceiba, en español, en módulos `dominio`, `aplicacion` e `infraestructura`. Dominio depende solo de Reactor; aplicación depende de dominio; infraestructura depende de aplicación y dominio. No aplicar el scaffold Bancolombia.
+Java 21, Spring Boot 3.5.16, Gradle 9.2.1. Paradigma reactivo con Spring WebFlux y Spring Data Redis reactivo; Kafka con Spring Kafka. Sin base relacional. Estructura hexagonal con CQRS, en español, en módulos `dominio`, `aplicacion` e `infraestructura`. Dominio depende solo de Reactor; aplicación depende de dominio; infraestructura depende de aplicación y dominio. No aplicar el scaffold Bancolombia.
 
 ## Capas
 | Capa | Clases nuevas o tocadas |

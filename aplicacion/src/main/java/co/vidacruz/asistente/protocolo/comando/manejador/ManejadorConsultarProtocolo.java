@@ -1,5 +1,7 @@
-package co.vidacruz.asistente.protocolo.comando;
+package co.vidacruz.asistente.protocolo.comando.manejador;
 
+import co.vidacruz.asistente.protocolo.comando.ComandoConsultarProtocolo;
+import co.vidacruz.asistente.protocolo.comando.fabrica.FabricaConsultaProtocolo;
 import co.vidacruz.asistente.protocolo.modelo.dto.ResultadoConsulta;
 import co.vidacruz.asistente.protocolo.servicio.ServicioConsultarProtocolo;
 import reactor.core.publisher.Mono;

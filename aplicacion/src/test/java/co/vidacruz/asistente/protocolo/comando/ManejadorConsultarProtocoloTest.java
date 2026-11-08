@@ -1,5 +1,8 @@
 package co.vidacruz.asistente.protocolo.comando;
 
+import co.vidacruz.asistente.protocolo.comando.fabrica.FabricaConsultaProtocolo;
+import co.vidacruz.asistente.protocolo.comando.manejador.ManejadorConsultarProtocolo;
+
 import org.junit.jupiter.api.Assertions;
 import org.mockito.Mockito;
 

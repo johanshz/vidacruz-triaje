@@ -7,7 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import co.vidacruz.asistente.urgencias.comando.ComandoActualizarUrgencias;
-import co.vidacruz.asistente.urgencias.comando.ManejadorActualizarUrgencias;
+import co.vidacruz.asistente.urgencias.comando.manejador.ManejadorActualizarUrgencias;
 import co.vidacruz.asistente.urgencias.excepcion.ExcepcionEventoInvalido;
 import co.vidacruz.asistente.urgencias.modelo.dto.DatosEventoTriaje;
 import co.vidacruz.asistente.urgencias.modelo.dto.EventoTriaje;

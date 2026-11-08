@@ -13,7 +13,7 @@
 | Ejecución de comparación opcional (prueba con `ANTHROPIC_API_KEY` o script equivalente) | Compara Sonnet 5.5 y Haiku 5.5 en tres consultas | consulta-protocolos.md | NUEVO |
 
 ## Paradigma y stack
-Java 21, Spring Boot 3.5.16, Gradle 9.2.1. Paradigma reactivo con Spring WebFlux; no se agrega persistencia. Estructura hexagonal + CQRS de Ceiba en español: módulos Gradle `dominio`, `aplicacion`, `infraestructura`. Dominio depende solo de Reactor; aplicación depende de dominio; infraestructura depende de aplicación y dominio. No se usa el scaffold Bancolombia. Redis y Kafka vigentes permanecen para la vista de urgencias. Se agregan Spring AI Anthropic, Spring AI Transformers/ONNX, `spring-ai-vector-store` y Resilience4j CircuitBreaker, TimeLimiter y Reactor. El SDK `com.anthropic:anthropic-java` solo se agrega si se activa el plan B tras una falla real de Spring AI.
+Java 21, Spring Boot 3.5.16, Gradle 9.2.1. Paradigma reactivo con Spring WebFlux; no se agrega persistencia. Estructura hexagonal con CQRS en español: módulos Gradle `dominio`, `aplicacion`, `infraestructura`. Dominio depende solo de Reactor; aplicación depende de dominio; infraestructura depende de aplicación y dominio. Redis y Kafka vigentes permanecen para la vista de urgencias. Se agregan Spring AI Anthropic, Spring AI Transformers/ONNX, `spring-ai-vector-store` y Resilience4j CircuitBreaker, TimeLimiter y Reactor. El SDK `com.anthropic:anthropic-java` solo se agrega si se activa el plan B tras una falla real de Spring AI.
 
 ## Artefactos del modelo y variables de entorno
 - Crear `scripts/descargar-modelo.*` para obtener el modelo ONNX y validar un checksum documentado.

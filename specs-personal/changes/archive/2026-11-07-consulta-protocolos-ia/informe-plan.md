@@ -2,7 +2,7 @@
 
 Plan generado para el RFC de consulta de protocolos clínicos con RAG. Artefactos: `proposal.md`, `specs/corpus-protocolos.md`, `specs/consulta-protocolos.md`, `specs/observabilidad-consulta.md`, `specs/vista-urgencias.md`, `design.md` y `tasks.md`. La trazabilidad completa está en `reporte-cobertura.md`.
 
-La sección 3 del RFC declara Java 21, Spring Boot 3.5.16, Gradle 9.2.1 y paradigma reactivo WebFlux; se conserva la arquitectura Ceiba existente en los módulos `dominio`, `aplicacion` e `infraestructura`. El change se nombra `consulta-protocolos-ia`; no existía una carpeta de change activa con ese nombre.
+La sección 3 del RFC declara Java 21, Spring Boot 3.5.16, Gradle 9.2.1 y paradigma reactivo WebFlux; se conserva la estructura hexagonal con CQRS existente en los módulos `dominio`, `aplicacion` e `infraestructura`. El change se nombra `consulta-protocolos-ia`; no existía una carpeta de change activa con ese nombre.
 
 No se ejecutaron comandos Gradle ni pruebas: esta skill solo crea el plan. No se modificaron código, RFC, `ESTADO.md` ni documentos vivos.
 

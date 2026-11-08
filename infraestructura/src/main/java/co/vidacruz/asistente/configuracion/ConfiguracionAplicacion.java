@@ -1,8 +1,8 @@
 package co.vidacruz.asistente.configuracion;
 
 import co.vidacruz.asistente.urgencias.consulta.ManejadorConsultarEstadoUrgencias;
-import co.vidacruz.asistente.protocolo.comando.FabricaConsultaProtocolo;
-import co.vidacruz.asistente.protocolo.comando.ManejadorConsultarProtocolo;
+import co.vidacruz.asistente.protocolo.comando.fabrica.FabricaConsultaProtocolo;
+import co.vidacruz.asistente.protocolo.comando.manejador.ManejadorConsultarProtocolo;
 import co.vidacruz.asistente.protocolo.servicio.ServicioConsultarProtocolo;
 import co.vidacruz.asistente.protocolo.configuracion.CondicionesProtocolo;
 import co.vidacruz.asistente.urgencias.puerto.dao.DaoUrgencias;

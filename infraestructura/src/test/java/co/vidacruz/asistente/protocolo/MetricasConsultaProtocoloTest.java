@@ -12,7 +12,7 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import co.vidacruz.asistente.protocolo.comando.ManejadorConsultarProtocolo;
+import co.vidacruz.asistente.protocolo.comando.manejador.ManejadorConsultarProtocolo;
 import co.vidacruz.asistente.protocolo.controlador.ConsultaControladorProtocolo;
 import co.vidacruz.asistente.protocolo.modelo.dto.FuenteProtocolo;
 import co.vidacruz.asistente.protocolo.modelo.dto.RespuestaConsulta;

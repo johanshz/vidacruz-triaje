@@ -1,6 +1,6 @@
-package co.vidacruz.asistente.configuracion;
+package co.vidacruz.asistente.urgencias.configuracion;
 
-import co.vidacruz.asistente.urgencias.comando.ManejadorActualizarUrgencias;
+import co.vidacruz.asistente.urgencias.comando.manejador.ManejadorActualizarUrgencias;
 import co.vidacruz.asistente.urgencias.servicio.ServicioActualizarUrgencias;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

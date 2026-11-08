@@ -8,7 +8,7 @@ Plan corregido en el mismo change `asistente-urgencias`: `proposal.md`, dos spec
 - RN-01 a RN-10: trazados en los specs y/o tareas.
 - CA-01 a CA-28: incluidos en specs y tareas.
 - CA-28: el RFC dice MODIFICADO, pero se refiere al código de `ArquitecturaTest`; en los specs queda como NUEVO porque no había requirement anterior. El RFC no se modificó.
-- Ajustes de revisión: capas ceñidas a la estructura hexagonal/CQRS Ceiba del RFC; F-08 asigna la validación del evento al servicio de dominio; F-09 conserva el camino de consulta sin servicio ni entidad de dominio.
+- Ajustes: capas ceñidas a la estructura hexagonal con CQRS del RFC; F-08 asigna la validación del evento al servicio de dominio; F-09 conserva el camino de consulta sin servicio ni entidad de dominio.
 - P-01: preservado como decisión abierta, configurable en propiedades y documentado en README sin inventar valor.
 
 ## Cierre

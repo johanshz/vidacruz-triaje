@@ -1,6 +1,6 @@
 # Cobertura del RFC — consulta-protocolos-ia
 
-RFC: `C:\Users\Johan Sanchez\Documents\WORKSPACE_IA\proyectos\ceiba-prueba\desarrollo-ia\asistente\rfc-activo.md`
+RFC: `desarrollo-ia/asistente/rfc-activo.md`
 
 ## Flujos
 | ID | Artefactos del plan | Cobertura |

@@ -14,4 +14,4 @@ El médico necesita consultar protocolos clínicos oficiales en lenguaje natural
 No cambia Triage ni la vista de urgencias existente. No se agregan protocolos al corpus, persistencia nueva, R2DBC, despliegue Kubernetes/Azure ni exportación OTLP. El Asistente no llama al Triage.
 
 ## RFC de origen
-C:\Users\Johan Sanchez\Documents\WORKSPACE_IA\proyectos\ceiba-prueba\desarrollo-ia\asistente\rfc-activo.md
+`desarrollo-ia/asistente/rfc-activo.md`
