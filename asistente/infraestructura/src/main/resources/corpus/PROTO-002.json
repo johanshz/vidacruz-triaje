@@ -1,0 +1,8 @@
+{
+  "codigo": "PROTO-002",
+  "titulo": "Sepsis, identificación temprana (qSOFA)",
+  "secciones": [
+    {"nombre": "Criterios", "texto": "2 o más de: frecuencia respiratoria ≥ 22, alteración del estado mental, sistólica ≤ 100 mmHg."},
+    {"nombre": "Acciones iniciales", "texto": "lactato y hemocultivos antes del antibiótico; antibiótico de amplio espectro en la primera hora; 30 ml/kg de cristaloides si hay hipotensión o lactato ≥ 4."}
+  ]
+}

@@ -1,0 +1,6 @@
+dependencies {
+    implementation project(':dominio')
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+    testImplementation 'io.projectreactor:reactor-test'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}

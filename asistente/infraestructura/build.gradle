@@ -1,0 +1,88 @@
+plugins { id 'org.springframework.boot'; id 'java'; id 'jacoco-report-aggregation' }
+dependencies {
+    implementation project(':aplicacion')
+    implementation project(':dominio')
+    implementation platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+    implementation 'org.springframework.kafka:spring-kafka'
+    implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
+    implementation 'org.springframework.ai:spring-ai-starter-model-transformers'
+    runtimeOnly 'ai.djl.pytorch:pytorch-native-cpu:2.5.1:linux-x86_64'
+    runtimeOnly 'ai.djl.pytorch:pytorch-jni:2.5.1-0.32.0'
+    implementation 'org.springframework.ai:spring-ai-vector-store'
+    implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.3.0'
+    implementation 'io.github.resilience4j:resilience4j-timelimiter:2.3.0'
+    implementation 'io.github.resilience4j:resilience4j-reactor:2.3.0'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+    testImplementation 'io.projectreactor:reactor-test'
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.5.1'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers'
+    testImplementation 'org.testcontainers:kafka'
+    testImplementation 'io.projectreactor.tools:blockhound:1.0.11.RELEASE'
+}
+
+dependencies {
+    jacocoAggregation project(':dominio')
+    jacocoAggregation project(':aplicacion')
+    jacocoAggregation project(':infraestructura')
+}
+
+tasks.named('testCodeCoverageReport') {
+    dependsOn rootProject.subprojects.collect { proyecto -> proyecto.tasks.named('compileJava') }
+    dependsOn rootProject.subprojects.collect { proyecto -> proyecto.tasks.named('test') }
+    onlyIf('Las pruebas fueron omitidas explícitamente') {
+        !gradle.startParameter.excludedTaskNames.any { nombre -> nombre == 'test' || nombre.endsWith(':test') }
+    }
+    reports {
+        xml.required = true
+        xml.outputLocation = layout.buildDirectory.file('reports/jacoco/test/jacocoTestReport.xml')
+        html.required = true
+    }
+    classDirectories.setFrom(files(classDirectories.files.collect { classDirectory ->
+        fileTree(dir: classDirectory, exclude: ['**/Aplicacion.class', '**/package-info.class'])
+    }))
+}
+
+tasks.register('verificarCoberturaAgregada') {
+    dependsOn tasks.named('testCodeCoverageReport')
+    onlyIf('Las pruebas fueron omitidas explícitamente') {
+        !gradle.startParameter.excludedTaskNames.any { nombre -> nombre == 'test' || nombre.endsWith(':test') }
+    }
+    doLast {
+        def reporte = layout.buildDirectory.file('reports/jacoco/test/jacocoTestReport.xml').get().asFile
+        if (!reporte.exists()) throw new GradleException('No se generó el reporte agregado de JaCoCo')
+        def fabricaDocumentos = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+        fabricaDocumentos.setFeature('http://apache.org/xml/features/nonvalidating/load-external-dtd', false)
+        def documento = fabricaDocumentos.newDocumentBuilder().parse(reporte)
+        def raiz = documento.documentElement
+        def linea = documento.getElementsByTagName('counter').find {
+            it.parentNode.isSameNode(raiz) && it.getAttribute('type') == 'LINE'
+        }
+        if (linea == null) throw new GradleException('El reporte agregado no contiene el contador de líneas')
+        def cubiertas = linea.getAttribute('covered').toBigInteger()
+        def perdidas = linea.getAttribute('missed').toBigInteger()
+        if (cubiertas + perdidas == 0 || cubiertas * 100 / (cubiertas + perdidas) < 80) {
+            throw new GradleException("Cobertura agregada inferior al 80 %: ${cubiertas}/${cubiertas + perdidas}")
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('testCodeCoverageReport')
+    dependsOn tasks.named('verificarCoberturaAgregada')
+}
+
+tasks.named('test') {
+    forkEvery = 1
+    timeout = java.time.Duration.ofMinutes(25)
+}

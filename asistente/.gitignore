@@ -1,0 +1,11 @@
+.gradle/
+build/
+**/build/
+.idea/
+*.iml
+
+.gradle-home/
+gradle-home/
+**/model.onnx
+**/tokenizer.json
+.env

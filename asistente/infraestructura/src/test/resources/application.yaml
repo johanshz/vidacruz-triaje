@@ -1,0 +1,33 @@
+spring:
+  ai:
+    model:
+      chat: none
+      embedding: none
+  data:
+    redis:
+      connect-timeout: 2s
+      timeout: 2s
+management:
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: [health, info, prometheus]
+  endpoint:
+    prometheus:
+      access: unrestricted
+    health:
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState
+vidacruz:
+  ia:
+    corpus:
+      cargar: false

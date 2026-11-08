@@ -1,0 +1,96 @@
+﻿server:
+  port: ${SERVER_PORT:8080}
+spring:
+  application:
+    name: asistente
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      chat:
+        options:
+          model: ${vidacruz.ia.modelo:claude-sonnet-5-5}
+    model:
+      embedding: transformers
+    embedding:
+      transformer:
+        onnx:
+          model-uri: classpath:/model/model.onnx
+        tokenizer:
+          uri: classpath:/model/tokenizer.json
+          options:
+            padding: true
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2s}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    consumer:
+      group-id: ${KAFKA_GROUP_ID:asistente-urgencias}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    listener:
+      missing-topics-fatal: false
+      observation-enabled: true
+  reactor:
+    context-propagation: auto
+  main:
+    banner-mode: off
+management:
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  health:
+    redis:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: [health, info, prometheus]
+  endpoint:
+    prometheus:
+      access: unrestricted
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState
+  tracing:
+    sampling:
+      probability: 1.0
+vidacruz:
+  seguridad:
+    api-key: ${ASISTENTE_API_KEY:}
+  kafka:
+    grupo: ${KAFKA_GROUP_ID:asistente-urgencias}
+    concurrencia: ${KAFKA_CONCURRENCY:3}
+    max-poll-records: ${KAFKA_MAX_POLL_RECORDS:50}
+    reintentos:
+      intervalo-inicial: ${KAFKA_RETRY_INITIAL_MS:1000}
+      intervalo-maximo: ${KAFKA_RETRY_MAX_MS:4000}
+      multiplicador: ${KAFKA_RETRY_MULTIPLIER:2.0}
+  ia:
+    corpus:
+      cargar: ${ASISTENTE_CORPUS_CARGAR:true}
+    modelo: ${ASISTENTE_MODELO:claude-sonnet-5-5}
+    umbral-similitud: ${ASISTENTE_UMBRAL_SIMILITUD:0.55}
+    top-k: ${ASISTENTE_TOP_K:3}
+    resiliencia:
+      timeout: ${ASISTENTE_IA_TIMEOUT:10s}
+      timeout-embeddings: ${ASISTENTE_EMBEDDINGS_TIMEOUT:10s}
+      ventana: ${ASISTENTE_IA_VENTANA:10}
+      minimo-llamadas: ${ASISTENTE_IA_MINIMO_LLAMADAS:5}
+      porcentaje-fallos: ${ASISTENTE_IA_PORCENTAJE_FALLOS:50}
+      espera-abierto: ${ASISTENTE_IA_ESPERA_ABIERTO:30s}
+      llamadas-semiabierto: ${ASISTENTE_IA_LLAMADAS_SEMIABIERTO:2}
+logging:
+  structured:
+    format:
+      console: ecs

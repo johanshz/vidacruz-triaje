@@ -1,0 +1,6 @@
+services:
+  asistente:
+    build:
+      dockerfile: local/Dockerfile.qa
+    ports: !override
+      - "18080:8080"

@@ -1,0 +1,2 @@
+rootProject.name = 'asistente'
+include 'dominio', 'aplicacion', 'infraestructura'
