@@ -35,10 +35,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import reactor.blockhound.BlockHound;
 
-/**
- * Prueba de CA-22. Se omite explícitamente si el modelo ONNX fijado por la RFC no está en el classpath;
- * esa omisión se registra como PE y nunca se reemplaza por embeddings simulados.
- */
 @EnabledIf("co.vidacruz.asistente.protocolo.ModeloOnnxCondicion#estaDisponible")
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -46,7 +42,6 @@ import reactor.blockhound.BlockHound;
                 "spring.ai.model.embedding=transformers",
                 "spring.ai.embedding.transformer.onnx.model-uri=classpath:/model/model.onnx",
                 "spring.ai.embedding.transformer.tokenizer.uri=classpath:/model/tokenizer.json",
-                // El application.yaml de pruebas oculta el principal: se repiten aquí sus valores de IA
                 "vidacruz.ia.modelo=claude-sonnet-5-5", "vidacruz.ia.umbral-similitud=0.55",
                 "vidacruz.ia.top-k=3", "vidacruz.ia.resiliencia.timeout=10s",
                 "vidacruz.ia.resiliencia.timeout-embeddings=10s", "vidacruz.ia.resiliencia.ventana=10",

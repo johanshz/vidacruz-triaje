@@ -47,8 +47,6 @@ public final class CargadorCorpus implements ApplicationRunner {
         try (var entrada = new ClassPathResource(archivo).getInputStream()) {
             ProtocoloCorpus protocolo = mapper.readValue(entrada, ProtocoloCorpus.class);
             validar(protocolo);
-            // Se indexa título + sección + texto: solo el texto ("presión ≥ 180/120…") no se parece a
-            // la pregunta ("crisis hipertensiva") y quedaba bajo el umbral (calibración 2026-11-07)
             return protocolo.secciones().stream().map(seccion -> new Document(
                     protocolo.titulo() + ". " + seccion.nombre() + ": " + seccion.texto(), Map.of(
                     MetadatosProtocolo.PROTOCOLO, protocolo.codigo(),

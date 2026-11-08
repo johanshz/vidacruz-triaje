@@ -10,8 +10,6 @@ dependencies {
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
     implementation 'org.springframework.ai:spring-ai-starter-model-transformers'
-    // PyTorch nativo dentro de la imagen Linux: sin esto DJL lo descarga (246 MB) en cada arranque
-    // y, si falla la red o el DNS, el Asistente no inicia (verificado en Docker 2026-11-07)
     runtimeOnly 'ai.djl.pytorch:pytorch-native-cpu:2.5.1:linux-x86_64'
     runtimeOnly 'ai.djl.pytorch:pytorch-jni:2.5.1-0.32.0'
     implementation 'org.springframework.ai:spring-ai-vector-store'
@@ -84,10 +82,7 @@ tasks.named('check') {
     dependsOn tasks.named('verificarCoberturaAgregada')
 }
 
-// BlockHound.install() queda activo en toda la JVM y rompe las demás clases de prueba:
-// cada clase de prueba corre en su propia JVM
 tasks.named('test') {
     forkEvery = 1
-    // Límite de seguridad: el 2026-11-07 una JVM de pruebas quedó colgada al apagarse (Lettuce + Kafka)
     timeout = java.time.Duration.ofMinutes(25)
 }

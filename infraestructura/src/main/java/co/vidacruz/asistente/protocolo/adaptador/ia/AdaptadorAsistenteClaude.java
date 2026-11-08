@@ -87,10 +87,6 @@ public final class AdaptadorAsistenteClaude implements AsistenteProtocolos {
         }
     }
 
-    /**
-     * El modelo suele envolver el JSON en un bloque markdown (```json ... ```); sin quitarlo, Jackson
-     * falla y toda respuesta válida termina rechazada por la barrera (verificado en vivo 2026-11-07).
-     */
     private String extraerObjetoJson(String contenido) {
         if (contenido == null) {
             return null;

@@ -103,7 +103,6 @@ public class ConfiguracionKafka {
             @Override
             public void failedDelivery(org.apache.kafka.clients.consumer.ConsumerRecord<?, ?> registro,
                     Exception excepcion, int intento) {
-                // La política de reintentos permanece visible en los logs del framework.
             }
 
             @Override
