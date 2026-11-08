@@ -17,7 +17,7 @@
 | Job periódico del outbox | Publica eventos pendientes en Kafka | publicacion-eventos.md | NUEVO |
 
 ## Paradigma y stack
-Java 21, Spring Boot 3.5.16, Gradle 9.2.1. Paradigma reactivo: Spring WebFlux y R2DBC, PostgreSQL 16; Kafka con Spring for Apache Kafka (`KafkaTemplate` mediante `Mono.fromFuture`, `KafkaAdmin`). Arquitectura hexagonal + CQRS de Ceiba, módulos `dominio`, `aplicacion`, `infraestructura`, código y vocabulario en español. No agregar migración: el esquema V1 existente cubre paciente, auditoría y outbox.
+Java 21, Spring Boot 3.5.16, Gradle 9.2.1. Paradigma reactivo: Spring WebFlux y R2DBC, PostgreSQL 16; Kafka con Spring for Apache Kafka (`KafkaTemplate` mediante `Mono.fromFuture`, `KafkaAdmin`). Arquitectura hexagonal + hexagonal con CQRS, módulos `dominio`, `aplicacion`, `infraestructura`, código y vocabulario en español. No agregar migración: el esquema V1 existente cubre paciente, auditoría y outbox.
 
 ## Capas
 | Capa | Clases nuevas o tocadas |
@@ -28,9 +28,9 @@ Java 21, Spring Boot 3.5.16, Gradle 9.2.1. Paradigma reactivo: Spring WebFlux y 
 | entry-points | Endpoints HTTP de F-01 a F-03 y tarea programada F-04 dentro del módulo `infraestructura` según el layout real del proyecto |
 
 ## Decisiones
-- Mantener los módulos Gradle y paquetes del scaffold Ceiba existentes; no usar scaffold Bancolombia, porque el RFC define su propia estructura.
+- Mantener los módulos Gradle y paquetes de la estructura hexagonal con CQRS existente, porque el RFC define su propia estructura.
 - F-01 y F-03 escriben ficha, auditoría y outbox en una misma transacción. El límite de transacción se implementa con un puerto de dominio y adaptador `TransactionalOperator`, recomendado por el RFC para no acoplar aplicación a Spring.
-- F-02 consulta por `DaoPaciente` + `DatabaseClient` + MapRow, sin entidad ni servicio, por CQRS de Ceiba.
+- F-02 consulta por `DaoPaciente` + `DatabaseClient` + MapRow, sin entidad ni servicio, por hexagonal con CQRS.
 - Inyectar `java.time.Clock` UTC para tiempos reproducibles.
 - El publicador usa candado consultivo PostgreSQL por ciclo y procesa por `secuencia`; `enviado_en` se actualiza tras la confirmación Kafka.
 - El productor Kafka configura `StringSerializer` para llave y valor, `acks=all` e idempotencia activada; publica como valor el JSON de `outbox.carga` sin transformarlo.

@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import co.vidacruz.triage.evento.modelo.entidad.TipoEventoPaciente;
-import co.vidacruz.triage.paciente.comando.FabricaPaciente;
+import co.vidacruz.triage.paciente.comando.fabrica.FabricaPaciente;
 import co.vidacruz.triage.paciente.modelo.entidad.DatosRegistroPaciente;
 import co.vidacruz.triage.paciente.modelo.entidad.EstadoPaciente;
 import co.vidacruz.triage.paciente.modelo.entidad.NivelTriage;

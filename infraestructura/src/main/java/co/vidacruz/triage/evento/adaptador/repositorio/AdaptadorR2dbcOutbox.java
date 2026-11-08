@@ -4,7 +4,7 @@ import co.vidacruz.triage.evento.modelo.entidad.EventoOutbox;
 import co.vidacruz.triage.evento.modelo.entidad.EventoPaciente;
 import co.vidacruz.triage.evento.puerto.repositorio.RepositorioOutbox;
 import co.vidacruz.triage.evento.puerto.repositorio.CandadoPublicacion;
-import co.vidacruz.triage.infraestructura.traza.LectorTraceparent;
+import co.vidacruz.triage.traza.LectorTraceparent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.r2dbc.postgresql.codec.Json;

@@ -19,7 +19,7 @@ Los errores usan `application/problem+json`, con `codigo` y `traceId`: `VALIDACI
 
 ## Cómo probar el camino del paciente
 
-Define la API key de `.env` en la terminal. Los seis registros corresponden a los ejemplos Ceiba E1-E6:
+Define la API key de `.env` en la terminal. Los seis registros corresponden a los ejemplos E1-E6 del enunciado:
 
 ```bash
 export TRIAGE_API_KEY=cambia-esta-api-key-local

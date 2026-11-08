@@ -12,7 +12,7 @@ import reactor.test.StepVerifier;
 class ServicioClasificacionPacienteTest {
     private final ServicioClasificacionPaciente servicio = new ServicioClasificacionPaciente();
 
-    @Test void clasificaEjemplosCeiba() {
+    @Test void clasificaEjemplosDelEnunciado() {
         assertNivel(NivelTriage.CRITICO, datos(130, 180, 110, 97, "36.8", 8, 15, "Dolor torácico"));
         assertNivel(NivelTriage.URGENTE, datos(95, 150, 95, 91, "37.0", 4, 15, "Disnea"));
         assertNivel(NivelTriage.URGENTE_2, datos(88, 130, 85, 98, "38.2", 6, 15, "Fiebre"));

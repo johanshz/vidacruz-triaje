@@ -24,19 +24,19 @@
 | `check` Gradle | Aplica arquitectura, BlockHound y umbral JaCoCo | entorno-calidad.md | NUEVO |
 
 ## Paradigma y stack
-Reactivo: Java 21, Spring Boot 3.5.16, WebFlux y R2DBC con PostgreSQL 16. Flyway usa JDBC solo durante el arranque, fuera del event loop. Gradle 9.2.1. Estructura hexagonal + CQRS de Ceiba en módulos `dominio`, `aplicacion` e `infraestructura`, con paquetes y vocabulario en español. El scaffold ya existe.
+Reactivo: Java 21, Spring Boot 3.5.16, WebFlux y R2DBC con PostgreSQL 16. Flyway usa JDBC solo durante el arranque, fuera del event loop. Gradle 9.2.1. Estructura hexagonal + hexagonal con CQRS en módulos `dominio`, `aplicacion` e `infraestructura`, con paquetes y vocabulario en español. La estructura base ya existe.
 
 ## Capas
 | Capa | Clases nuevas o tocadas |
 |---|---|
 | dominio | Excepciones comunes de negocio en `co.vidacruz.triage.comun.excepcion` |
 | aplicacion | Ninguna lógica de negocio ni endpoints en esta entrega |
-| driven-adapters | No aplica al scaffold Ceiba; adaptadores R2DBC/health existentes solo si el RFC requiere integración |
+| driven-adapters | No aplica al estructura hexagonal con CQRS del proyecto; adaptadores R2DBC/health existentes solo si el RFC requiere integración |
 | entry-points | Configuración de seguridad WebFlux, manejador global, WebFilter de trace, configuración Actuator |
 | infraestructura (configuración/recursos) | Flyway V1, configuración de propiedades, Dockerfile, compose, `.env.example`, README, build y pruebas |
 
 ## Decisiones
-- Los flujos F-01 (variables de conexión), F-04 (exposición actual del actuator) y F-07/RN-07/CA-25 (ArquitecturaTest) se marcan MODIFICADO en el RFC porque cambian código del scaffold existente. Como esta es la primera entrega con specs y no hay línea base, los requisitos correspondientes se documentan como NUEVOS en este delta; no se reconstruye una línea base desde el código. Nota: decisión del copiloto, 2026-11-06.
+- Los flujos F-01 (variables de conexión), F-04 (exposición actual del actuator) y F-07/RN-07/CA-25 (ArquitecturaTest) se marcan MODIFICADO en el RFC porque cambian código de la estructura inicial. Como esta es la primera entrega con specs y no hay línea base, los requisitos correspondientes se documentan como NUEVOS en este delta; no se reconstruye una línea base desde el código. Nota: decisión del copiloto, 2026-11-06.
 - Flyway usa JDBC al arranque y el tráfico de aplicación usa R2DBC, según sección 3 del RFC.
 - Kafka y Redis corren solo en Compose; el Triage no los integra en código ni readiness en esta entrega.
 - Solo health queda público; info y prometheus requieren API key.
@@ -48,5 +48,5 @@ Reactivo: Java 21, Spring Boot 3.5.16, WebFlux y R2DBC con PostgreSQL 16. Flyway
 |---|---|
 | Ninguno | No aplica |
 
-## Tratamiento del scaffold existente
+## Tratamiento de la estructura inicial
 Los cambios F-01 (variables de conexión), F-04 (exposición de actuator) y F-07/RN-07/CA-25 (`ArquitecturaTest`) modifican código ya presente. Como no hay specs vigentes, se expresan como requirements NUEVOS en este primer delta, conforme a la decisión del copiloto del 2026-11-06. No se reconstruye baseline a partir del código.

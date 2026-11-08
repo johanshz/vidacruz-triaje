@@ -3,8 +3,8 @@ package co.vidacruz.triage.paciente.controlador;
 import co.vidacruz.triage.comun.excepcion.ExcepcionValidacion;
 import co.vidacruz.triage.paciente.comando.ComandoCambiarEstadoPaciente;
 import co.vidacruz.triage.paciente.comando.ComandoRegistrarPaciente;
-import co.vidacruz.triage.paciente.comando.ManejadorCambiarEstadoPaciente;
-import co.vidacruz.triage.paciente.comando.ManejadorRegistrarPaciente;
+import co.vidacruz.triage.paciente.comando.manejador.ManejadorCambiarEstadoPaciente;
+import co.vidacruz.triage.paciente.comando.manejador.ManejadorRegistrarPaciente;
 import co.vidacruz.triage.paciente.consulta.ManejadorConsultarPaciente;
 import co.vidacruz.triage.paciente.modelo.entidad.EstadoPaciente;
 import java.util.UUID;
@@ -39,17 +39,17 @@ public class ControladorPaciente {
     }
 
     @GetMapping("/{id}")
-    public Mono<?> consultar(@PathVariable String id) {
-        return consultar.ejecutar(uuid(id));
+    public Mono<RespuestaPaciente> consultar(@PathVariable String id) {
+        return consultar.ejecutar(uuid(id)).map(RespuestaPaciente::desde);
     }
 
     @PatchMapping("/{id}/estado")
-    public Mono<?> cambiar(@PathVariable String id, @RequestBody SolicitudCambioEstado solicitud) {
+    public Mono<RespuestaPaciente> cambiar(@PathVariable String id, @RequestBody SolicitudCambioEstado solicitud) {
         if (solicitud == null || solicitud.estado() == null) throw new ExcepcionValidacion("estado", "El campo es obligatorio");
         EstadoPaciente destino;
         try { destino = EstadoPaciente.valueOf(solicitud.estado()); }
         catch (IllegalArgumentException error) { throw new ExcepcionValidacion("estado", "Estado desconocido"); }
-        return cambiar.ejecutar(new ComandoCambiarEstadoPaciente(uuid(id), destino));
+        return cambiar.ejecutar(new ComandoCambiarEstadoPaciente(uuid(id), destino)).map(RespuestaPaciente::desde);
     }
 
     private UUID uuid(String id) {
@@ -57,3 +57,4 @@ public class ControladorPaciente {
         catch (IllegalArgumentException error) { throw new ExcepcionValidacion("id", "El identificador debe ser UUID"); }
     }
 }
+

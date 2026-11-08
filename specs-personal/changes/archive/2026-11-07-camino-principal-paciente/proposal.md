@@ -14,4 +14,4 @@ El Triage necesita completar el camino principal de atención: registrar y clasi
 No se implementan escalamiento por SLA, job de vigilancia, alertas SSE, reporte RF-05, el Asistente, despliegue Kubernetes/Azure ni trazas OTLP. No se agrega migración de base de datos ni se actualiza OpenAPI en esta entrega. El campo `escalado` se devuelve siempre como `false`.
 
 ## RFC de origen
-C:\Users\Johan Sanchez\Documents\WORKSPACE_IA\proyectos\ceiba-prueba\desarrollo-ia\triage\rfc-activo.md
+desarrollo-ia/triage/rfc-activo.md

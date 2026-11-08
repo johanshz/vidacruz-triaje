@@ -1,9 +1,9 @@
 package co.vidacruz.triage;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import co.vidacruz.triage.evento.comando.ManejadorPublicarOutbox;
+import co.vidacruz.triage.evento.comando.manejador.ManejadorPublicarOutbox;
 import co.vidacruz.triage.vigilancia.comando.ComandoEscalarVencidos;
-import co.vidacruz.triage.vigilancia.comando.ManejadorEscalarVencidos;
+import co.vidacruz.triage.vigilancia.comando.manejador.ManejadorEscalarVencidos;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;

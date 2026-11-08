@@ -3,7 +3,7 @@
 ## NUEVO
 
 ### Requirement: No bloqueo y límites de capas
-Los flujos nuevos son reactivos, no bloquean el event loop y respetan la separación de capas de Ceiba; dominio no depende de Spring, R2DBC ni Kafka.
+Los flujos nuevos son reactivos, no bloquean el event loop y respetan la separación de capas de la estructura hexagonal con CQRS del proyecto; dominio no depende de Spring, R2DBC ni Kafka.
 
 **Origen en el RFC:** F-01, F-02, F-03, F-04, CA-27
 

@@ -1,6 +1,6 @@
 package co.vidacruz.triage.alerta.configuracion;
 
-import co.vidacruz.triage.alerta.comando.ManejadorEmitirAlerta;
+import co.vidacruz.triage.alerta.comando.manejador.ManejadorEmitirAlerta;
 import co.vidacruz.triage.alerta.puerto.dao.DaoAlerta;
 import co.vidacruz.triage.alerta.puerto.repositorio.NotificadorAlerta;
 import java.time.Clock;

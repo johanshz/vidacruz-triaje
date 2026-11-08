@@ -19,7 +19,7 @@
 | GET `/triage/reportes/operacion` | Consulta reporte horario | reporte-operacion.md | NUEVO |
 
 ## Paradigma y stack
-Java 21, Spring Boot 3.5.16, Gradle 9.2.1; reactivo con Spring WebFlux y R2DBC, PostgreSQL 16 y Flyway ya instalado. Estructura hexagonal + CQRS de Ceiba en español, módulos `dominio`, `aplicacion`, `infraestructura`; no usar scaffold Bancolombia ni añadir dependencias productivas. Kafka existente. Sin nueva migración. `Clock` UTC inyectable.
+Java 21, Spring Boot 3.5.16, Gradle 9.2.1; reactivo con Spring WebFlux y R2DBC, PostgreSQL 16 y Flyway ya instalado. Estructura hexagonal + hexagonal con CQRS en español, módulos `dominio`, `aplicacion`, `infraestructura`; sin añadir dependencias productivas. Kafka existente. Sin nueva migración. `Clock` UTC inyectable.
 
 ## Capas
 | Capa | Clases nuevas o tocadas |

@@ -3,8 +3,8 @@ package co.vidacruz.triage;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import co.vidacruz.triage.infraestructura.error.FabricaProblemDetail;
-import co.vidacruz.triage.infraestructura.error.ManejadorErroresWeb;
+import co.vidacruz.triage.error.FabricaProblemDetail;
+import co.vidacruz.triage.error.ManejadorErroresWeb;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -17,8 +17,8 @@ import reactor.test.StepVerifier;
 class ManejadorErroresWebTest {
 
     private final ManejadorErroresWeb manejador = new ManejadorErroresWeb(new FabricaProblemDetail(),
-        new co.vidacruz.triage.infraestructura.error.EscritorProblemDetail(new ObjectMapper()),
-        new co.vidacruz.triage.infraestructura.error.TraductorErrorHttp());
+        new co.vidacruz.triage.error.EscritorProblemDetail(new ObjectMapper()),
+        new co.vidacruz.triage.error.TraductorErrorHttp());
 
     @Test
     void traduce404405YErroresNoControlados() {
@@ -58,10 +58,10 @@ class ManejadorErroresWebTest {
                 throw new JsonProcessingException("fallo de serialización") { };
             }
         };
-        var escritor = new co.vidacruz.triage.infraestructura.error.EscritorProblemDetail(mapper);
+        var escritor = new co.vidacruz.triage.error.EscritorProblemDetail(mapper);
         var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/").build());
         var problem = new FabricaProblemDetail().crear(exchange,
-            co.vidacruz.triage.infraestructura.error.TraductorErrorHttp.ErrorHttp.interno());
+            co.vidacruz.triage.error.TraductorErrorHttp.ErrorHttp.interno());
         StepVerifier.create(escritor.escribir(exchange, problem))
             .expectError(JsonProcessingException.class).verify();
     }

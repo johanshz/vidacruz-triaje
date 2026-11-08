@@ -9,9 +9,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import co.vidacruz.triage.paciente.comando.ComandoCambiarEstadoPaciente;
-import co.vidacruz.triage.paciente.comando.DependenciasCambioEstadoPaciente;
-import co.vidacruz.triage.paciente.comando.ManejadorCambiarEstadoPaciente;
-import co.vidacruz.triage.paciente.comando.RegistrarCambioPaciente;
+import co.vidacruz.triage.paciente.comando.manejador.DependenciasCambioEstadoPaciente;
+import co.vidacruz.triage.paciente.comando.manejador.ManejadorCambiarEstadoPaciente;
+import co.vidacruz.triage.paciente.comando.manejador.RegistrarCambioPaciente;
 import co.vidacruz.triage.paciente.excepcion.ExcepcionPacienteNoEncontrado;
 import co.vidacruz.triage.paciente.excepcion.ExcepcionTransicionInvalida;
 import co.vidacruz.triage.paciente.modelo.dto.DtoPaciente;

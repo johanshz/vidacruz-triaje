@@ -1,7 +1,7 @@
 package co.vidacruz.triage.evento;
 
-import co.vidacruz.triage.evento.comando.ManejadorPublicarOutbox;
-import co.vidacruz.triage.evento.comando.DependenciasPublicacionOutbox;
+import co.vidacruz.triage.evento.comando.manejador.ManejadorPublicarOutbox;
+import co.vidacruz.triage.evento.comando.manejador.DependenciasPublicacionOutbox;
 import co.vidacruz.triage.evento.modelo.entidad.EventoOutbox;
 import co.vidacruz.triage.evento.puerto.repositorio.ContadorEventosPendientes;
 import co.vidacruz.triage.evento.puerto.repositorio.PublicadorEventos;

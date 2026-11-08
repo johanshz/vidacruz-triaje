@@ -1,7 +1,7 @@
 package co.vidacruz.triage.alerta.consumidor;
 
 import co.vidacruz.triage.alerta.comando.ComandoEmitirAlerta;
-import co.vidacruz.triage.alerta.comando.ManejadorEmitirAlerta;
+import co.vidacruz.triage.alerta.comando.manejador.ManejadorEmitirAlerta;
 import co.vidacruz.triage.evento.configuracion.ConfiguracionKafka;
 import co.vidacruz.triage.evento.modelo.entidad.EventoPaciente;
 import com.fasterxml.jackson.core.JsonProcessingException;

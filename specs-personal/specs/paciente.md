@@ -7,7 +7,7 @@ El endpoint registra pacientes válidos, aplica clasificación de triaje y SLA, 
 
 #### Scenario: Pacientes de ejemplo y límites de clasificación
 **Origen en el RFC:** CA-01, CA-03
-- **WHEN** se registran los seis ejemplos Ceiba y pacientes con los valores frontera definidos para signos vitales, dolor y GCS
+- **WHEN** se registran los seis ejemplos del enunciado y pacientes con los valores frontera definidos para signos vitales, dolor y GCS
 - **THEN** cada uno recibe el nivel y SLA que corresponden a la regla RN-01, prevalece el nivel más grave y el endpoint devuelve 201
 
 #### Scenario: Clasificación administrativa

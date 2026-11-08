@@ -1,6 +1,6 @@
 package co.vidacruz.triage.evento.tarea;
 
-import co.vidacruz.triage.evento.comando.ManejadorPublicarOutbox;
+import co.vidacruz.triage.evento.comando.manejador.ManejadorPublicarOutbox;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;

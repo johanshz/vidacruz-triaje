@@ -7,7 +7,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
-import co.vidacruz.triage.infraestructura.error.MensajesError;
+import co.vidacruz.triage.error.MensajesError;
 import reactor.core.publisher.Mono;
 
 public final class GestorAutenticacionApiKey implements ReactiveAuthenticationManager {

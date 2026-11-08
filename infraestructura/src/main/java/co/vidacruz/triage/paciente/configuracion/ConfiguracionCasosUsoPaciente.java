@@ -1,11 +1,11 @@
 package co.vidacruz.triage.paciente.configuracion;
 
 import co.vidacruz.triage.evento.puerto.repositorio.RepositorioOutbox;
-import co.vidacruz.triage.paciente.comando.RegistrarCambioPaciente;
-import co.vidacruz.triage.paciente.comando.DependenciasRegistroPaciente;
-import co.vidacruz.triage.paciente.comando.DependenciasCambioEstadoPaciente;
-import co.vidacruz.triage.paciente.comando.ManejadorCambiarEstadoPaciente;
-import co.vidacruz.triage.paciente.comando.ManejadorRegistrarPaciente;
+import co.vidacruz.triage.paciente.comando.manejador.RegistrarCambioPaciente;
+import co.vidacruz.triage.paciente.comando.manejador.DependenciasRegistroPaciente;
+import co.vidacruz.triage.paciente.comando.manejador.DependenciasCambioEstadoPaciente;
+import co.vidacruz.triage.paciente.comando.manejador.ManejadorCambiarEstadoPaciente;
+import co.vidacruz.triage.paciente.comando.manejador.ManejadorRegistrarPaciente;
 import co.vidacruz.triage.paciente.consulta.ManejadorConsultarPaciente;
 import co.vidacruz.triage.paciente.puerto.dao.DaoPaciente;
 import co.vidacruz.triage.paciente.puerto.repositorio.ContadorClasificaciones;

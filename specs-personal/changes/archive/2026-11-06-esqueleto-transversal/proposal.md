@@ -1,7 +1,7 @@
 # esqueleto-transversal
 
 ## Por qué
-El Triage tiene únicamente el scaffold Ceiba y necesita quedar listo para las siguientes filas funcionales, con esquema persistente, seguridad, manejo uniforme de errores, observabilidad, entorno local y una puerta de calidad efectiva.
+El Triage tiene únicamente el estructura hexagonal con CQRS del proyecto y necesita quedar listo para las siguientes filas funcionales, con esquema persistente, seguridad, manejo uniforme de errores, observabilidad, entorno local y una puerta de calidad efectiva.
 
 ## Qué cambia
 - F-01: migraciones Flyway para paciente, auditoría inmutable y outbox, y configuración de conexión por variables de entorno.
@@ -16,4 +16,4 @@ El Triage tiene únicamente el scaffold Ceiba y necesita quedar listo para las s
 No agrega endpoints de negocio, Kafka al código del Triage, Redis al código, exportación OTLP/Jaeger, manifiestos de Kubernetes ni integración con Asistente.
 
 ## RFC de origen
-C:\Users\Johan Sanchez\Documents\WORKSPACE_IA\proyectos\ceiba-prueba\desarrollo-ia\triage\rfc-activo.md
+desarrollo-ia/triage/rfc-activo.md

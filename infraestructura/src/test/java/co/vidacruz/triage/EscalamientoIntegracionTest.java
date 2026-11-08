@@ -6,7 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import co.vidacruz.triage.evento.adaptador.repositorio.AdaptadorR2dbcOutbox;
 import co.vidacruz.triage.vigilancia.comando.ComandoEscalarVencidos;
-import co.vidacruz.triage.vigilancia.comando.ManejadorEscalarVencidos;
+import co.vidacruz.triage.vigilancia.comando.manejador.ManejadorEscalarVencidos;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Instant;
 import java.util.UUID;

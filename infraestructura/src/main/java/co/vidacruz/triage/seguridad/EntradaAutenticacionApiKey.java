@@ -1,10 +1,10 @@
 package co.vidacruz.triage.seguridad;
 
 import co.vidacruz.triage.comun.excepcion.CodigoError;
-import co.vidacruz.triage.infraestructura.error.EscritorProblemDetail;
-import co.vidacruz.triage.infraestructura.error.FabricaProblemDetail;
-import co.vidacruz.triage.infraestructura.error.MensajesError;
-import co.vidacruz.triage.infraestructura.error.TraductorErrorHttp;
+import co.vidacruz.triage.error.EscritorProblemDetail;
+import co.vidacruz.triage.error.FabricaProblemDetail;
+import co.vidacruz.triage.error.MensajesError;
+import co.vidacruz.triage.error.TraductorErrorHttp;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.core.AuthenticationException;

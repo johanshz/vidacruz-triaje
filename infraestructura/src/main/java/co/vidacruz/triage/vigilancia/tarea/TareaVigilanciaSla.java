@@ -1,7 +1,7 @@
 package co.vidacruz.triage.vigilancia.tarea;
 
 import co.vidacruz.triage.vigilancia.comando.ComandoEscalarVencidos;
-import co.vidacruz.triage.vigilancia.comando.ManejadorEscalarVencidos;
+import co.vidacruz.triage.vigilancia.comando.manejador.ManejadorEscalarVencidos;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

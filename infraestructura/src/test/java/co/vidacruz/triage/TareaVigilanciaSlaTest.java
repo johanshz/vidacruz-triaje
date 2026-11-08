@@ -6,7 +6,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import co.vidacruz.triage.vigilancia.comando.ComandoEscalarVencidos;
-import co.vidacruz.triage.vigilancia.comando.ManejadorEscalarVencidos;
+import co.vidacruz.triage.vigilancia.comando.manejador.ManejadorEscalarVencidos;
 import co.vidacruz.triage.vigilancia.tarea.TareaVigilanciaSla;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;

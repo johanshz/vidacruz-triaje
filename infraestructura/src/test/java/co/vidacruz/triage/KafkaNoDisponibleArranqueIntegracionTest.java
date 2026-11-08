@@ -12,7 +12,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.http.MediaType;
 import java.util.UUID;
 import reactor.test.StepVerifier;
-import co.vidacruz.triage.evento.comando.ManejadorPublicarOutbox;
+import co.vidacruz.triage.evento.comando.manejador.ManejadorPublicarOutbox;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)

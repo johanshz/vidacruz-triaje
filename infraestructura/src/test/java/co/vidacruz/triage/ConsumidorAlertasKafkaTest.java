@@ -8,7 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import co.vidacruz.triage.alerta.comando.ComandoEmitirAlerta;
-import co.vidacruz.triage.alerta.comando.ManejadorEmitirAlerta;
+import co.vidacruz.triage.alerta.comando.manejador.ManejadorEmitirAlerta;
 import co.vidacruz.triage.alerta.consumidor.ConsumidorAlertasKafka;
 import co.vidacruz.triage.alerta.consumidor.MemoriaIdsEventoProcesados;
 import co.vidacruz.triage.alerta.modelo.dto.AlertaEscalamiento;

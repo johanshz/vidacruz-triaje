@@ -15,7 +15,7 @@ Los pacientes que superan su SLA deben escalarse una sola vez, informar al equip
 Esquema Flyway V1, endpoints existentes salvo el SLA del registro, publicador del outbox, seguridad base, readiness, Asistente y despliegue final. No se añaden dependencias productivas ni adaptadores externos de notificación. OpenAPI queda para `$documentar-api`.
 
 ## RFC de origen
-C:\Users\Johan Sanchez\Documents\WORKSPACE_IA\proyectos\ceiba-prueba\desarrollo-ia\triage\rfc-activo.md
+desarrollo-ia/triage/rfc-activo.md
 
 ## Cierre
 - **Estado:** COMPLETADO
